@@ -9,7 +9,7 @@
  */
 
 import { useSyncExternalStore } from "react";
-import { marginBreakdown } from "@/lib/margin";
+import { marginBreakdown, drawAllowed } from "@/lib/margin";
 
 /** fixed fixture epoch: 2026-11-06 09:00:00 UTC */
 export const NOW = 1_794_042_000;
@@ -294,36 +294,40 @@ export const demoActions = {
 
   draw(amountUsd: number) {
     const breakdown = currentBreakdown();
+    const caps = effectiveCaps(state, breakdown);
     const windowed = state.draws.filter((d) => NOW - d.ts <= 12 * HOUR);
-    const ok =
-      amountUsd <= breakdown.perDrawCap && windowed.length < breakdown.drawsPerWindow;
-    if (!ok) {
+    const verdict = drawAllowed({
+      debt: state.debt,
+      amount: amountUsd,
+      bp: breakdown.bp,
+      perDrawCap: caps.perDrawCap,
+      drawsInWindow: windowed.length,
+    });
+    if (!verdict.ok) {
       pushReceipt({
         rail: "block",
-        memo:
-          windowed.length >= breakdown.drawsPerWindow
-            ? "4th draw in the 12 h window — reverted"
-            : "draw above the per-draw cap — reverted",
+        memo: `${verdict.reason ?? "draw blocked"} — reverted`,
         toLabel: "CreditEngine",
         amountUsd,
         reverted: true,
       });
       pushPolicy({
         kind: "cap",
-        label: "CapExceededBlock",
+        label: verdict.reason?.startsWith("CapExceededBlock")
+          ? "CapExceededBlock"
+          : "revert",
         detail: `Draw of $${amountUsd.toLocaleString("en-US", {
           minimumFractionDigits: 2,
-        })} USDC reverted — state unchanged (F8)`,
+        })} USDC reverted — state unchanged (F3/F8)`,
       });
       commit({
         beat: {
           id: nextId++,
           tone: "warning",
-          title: "Draw reverted — CapExceededBlock",
+          title: "Draw reverted",
           body:
-            windowed.length >= breakdown.drawsPerWindow
-              ? "Autonomy allows 3 draws per 12 h. The 4th draw reverts; a step-up raises the tier only with a verified human."
-              : "Per-draw cap is 2% of borrowing power. Use a step-up for a higher tier (requires a verified human).",
+            verdict.reason ??
+            "The engine refused the draw; state is unchanged.",
         },
       });
       return;
@@ -347,7 +351,6 @@ export const demoActions = {
       })} (≤ BP $${breakdown.bp.toLocaleString("en-US")})`,
     });
   },
-
   repay(amountUsd: number) {
     const amount = Math.min(amountUsd, state.debt);
     const debt = state.debt - amount;
@@ -539,6 +542,24 @@ export function currentBreakdown() {
   });
 }
 
+/** elevated tier while an accepted Agent Pass step-up is live (24 h) */
+export function effectiveCaps(
+  s: DemoState,
+  breakdown: ReturnType<typeof marginBreakdown>
+) {
+  const elevated =
+    s.stepUp === "granted" &&
+    s.lockedRiskAcceptedUntil != null &&
+    s.lockedRiskAcceptedUntil > NOW;
+  return {
+    elevated,
+    perDrawCap: elevated ? breakdown.perDrawCap * 2 : breakdown.perDrawCap,
+    drawsPerWindow: elevated
+      ? breakdown.drawsPerWindow * 2
+      : breakdown.drawsPerWindow,
+  };
+}
+
 /** React binding — cached snapshots only (stable objects per commit) */
 export function useDemo(): DemoState {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
@@ -551,5 +572,3 @@ export function useBreakdown() {
     () => currentBreakdown()
   );
 }
-
-export { FEED, LEGS_FIXTURE };

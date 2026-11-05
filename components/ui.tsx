@@ -5,7 +5,7 @@
  */
 
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { Link } from "next/link";
+import Link from "next/link";
 import { delta, ratio } from "@/lib/format";
 
 export const RING =
@@ -220,6 +220,7 @@ export function Gauge({
   tone = "primary",
   label,
   valueText,
+  aria,
 }: {
   value: number | null | undefined;
   min?: number;
@@ -230,6 +231,8 @@ export function Gauge({
   label?: string;
   /** exact displayed value (aria + external display) */
   valueText?: string;
+  /** explicit aria-label; falls back to label/valueText + marks */
+  aria?: string;
 }) {
   const ok = value != null && Number.isFinite(value) && value >= min;
   const pctFilled =
@@ -251,11 +254,10 @@ export function Gauge({
         ? "bg-destructive"
         : "bg-muted-foreground";
   const described =
-    label ??
-    [
+    aria ?? (label ?? [
       valueText ? `gauge at ${valueText}` : "gauge",
       ...marks.map((m) => `${m.label} at ${ratio(m.at)}`),
-    ].join("; ");
+    ].join("; "));
   return (
     <div
       role="img"

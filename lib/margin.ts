@@ -271,7 +271,7 @@ export function marginBreakdown(input: CreditInputs) {
     // autonomy (§4.2 defaults)
     perDrawCap: Math.floor(bp * AUTONOMY_CAP_PCT),
     drawsPerWindow: AUTONOMY_MAX_DRAWS,
-    windowHours: AUTONOMY_WINDOW_H,
+    windowHours: AUTONOMY_DRAW_WINDOW,
   } as const;
 }
 

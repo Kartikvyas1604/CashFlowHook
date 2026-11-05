@@ -30,7 +30,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
     if (!beat) return;
     const t = setTimeout(() => demoActions.dismissBeat(), 7_000);
     return () => clearTimeout(t);
-  }, [beat?.id]);
+  }, [beat]);
 
   return (
     <div className="flex min-h-full flex-col bg-background text-foreground">
