@@ -306,9 +306,23 @@ export function drawAllowed(params: {
   bp: number;
   perDrawCap: number;
   drawsInWindow: number;
+  /** window limit (base 3 per §4.2; elevated tier passes its own, W5) */
+  drawsPerWindow?: number;
+  /** §4.4: debt > unwindableNow·0.80 → the agent is capped until a
+   *  verified-human step-up accepts locked-leg risk */
+  agentCapped?: boolean;
 }): { ok: boolean; reason?: string } {
-  if (params.drawsInWindow >= AUTONOMY_MAX_DRAWS)
-    return { ok: false, reason: "CapExceededBlock — 4th draw in the 12 h window" };
+  if (params.agentCapped)
+    return {
+      ok: false,
+      reason:
+        "agent capped — debt exceeds 0.80 × unwindableNow; only a verified-human step-up unlocks draws (§4.4)",
+    };
+  if (params.drawsInWindow >= (params.drawsPerWindow ?? AUTONOMY_MAX_DRAWS))
+    return {
+      ok: false,
+      reason: `CapExceededBlock — draw #${params.drawsInWindow + 1} in the 12 h window`,
+    };
   if (params.amount > params.perDrawCap)
     return {
       ok: false,

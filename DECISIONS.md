@@ -1,0 +1,17 @@
+# DECISIONS.md — web build decisions (v3 web phase)
+
+One line per choice not already written in `agent/Agent.md` (§0.6). Server-side
+and contract decisions follow the same file once the contracts stage begins.
+
+| # | Decision | Rationale |
+|---|---|---|
+| W1 | Display math is a raw-precision TS mirror (`lib/margin.ts`) of §4.3/§6.1/§6.2; the canonical WAD fixed-point math stays in Solidity. No new constants introduced web-side. | The web is a display mirror; byte-identical goldens are the contract tests' job (I5). |
+| W2 | Fixture leg values (62,000 / 38,500 / 12,800 / 46,200 · debt 74,000) are declared constants in `lib/demo.ts` and every displayed number is computed at runtime from them via the mirror. | §2 claim 7 — numbers computed at runtime, never read from a slide; nothing on-chain invented (§0.2). |
+| W3 | R1 ships transfer-restricted (`eligR1 = 0`) and R2 gate-open in the initial state; gate-shut is a driver event, not the resting state. | Demonstrates the segregation story (§4.3) in one click while resting state stays healthy (health 1.28x). |
+| W4 | Step-up demo: first request ALWAYS renders the F10 denied path (expired proof, protected action does not occur); the second request runs the accepted path (mocked payload, server-validated framing). | §8.3 rubric requires the denied/expired path; deterministic beats beat flaky timing in demo conditions. |
+| W5 | Elevated step-up tier = 2× per-draw cap and 2× window draws for 24 h; draws still hard-block at BP − debt (I2). | §6.3 leaves the tier magnitude open; BP is the real ceiling per I2, so the tier is capped by the engine's own invariant. |
+| W6 | Crash replay comparator uses pro-rata debt shares per class for the isolated account and prints per-class liquidation shortfalls. | F12 requires isolated vs cross-margined on identical inputs; simplest defensible isolated model, inputs printed on screen. |
+| W7 | Brand: Cobalt Grid (dark-first, no gradients), Geist + Geist Mono; Workstation Dense layout; all tokens in `app/globals.css`, no hardcoded colors in components. | `brand.md` is the source of truth for colors/typography/voice. |
+| W8 | Headline money (BP, debt, unwindable, locked, per-draw cap) renders in full precision; compact abbreviation reserved for heat-strip cells and segment labels. | Judges verify displayed digits against the grid math; §4.6 rounding is engine-side floor. |
+| W9 | Nav/routes: `/` desk, `/stress`, `/agent`, `/onboard` as real URLs (no in-page tab state). | §6.8 four screens; shareable/judge-friendly links. |
+| W10 | No live chain calls anywhere in the web app in this phase; the fixture feed is labeled in the top-bar chip and the status strip. | N5 honesty; §0.2 never invent on-chain artifacts. |

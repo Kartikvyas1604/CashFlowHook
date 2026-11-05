@@ -263,5 +263,5 @@ export function utcClock(epochSeconds: number | null | undefined): string {
   const t = new Date(epochSeconds * 1000);
   const hh = String(t.getUTCHours()).padStart(2, "0");
   const mm = String(t.getUTCMinutes()).padStart(2, "0");
-  return `${String(t.getUTCDate()).padStart(2, "0")}:${hh}:${mm} UTC`;
+  return `${String(t.getUTCDate()).padStart(2, "0")} ${hh}:${mm} UTC`;
 }

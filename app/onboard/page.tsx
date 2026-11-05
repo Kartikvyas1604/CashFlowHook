@@ -37,7 +37,7 @@ const PRESETS = [
     id: "fixture-b",
     label: "fixture · strategy B (labelled fixture)",
     detail:
-      "bureau demo preset — equity + li strategy only; no live chain calls",
+      "bureau demo preset — equity + LP strategy only; no live chain calls",
   },
 ] as const;
 
@@ -135,7 +135,7 @@ export default function OnboardPage() {
       >
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[13px]">Proof of humanity for the making-a-raise paths</p>
+            <p className="text-[13px]">Proof of humanity for the raise-cap paths</p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
               Proofs are mocked in the World portal demo app — the demo never
               treats a client-asserted result as authorization.
@@ -154,7 +154,7 @@ export default function OnboardPage() {
         {canVerify ? null : (
           <p className="mt-2 text-[11px] text-muted-foreground">
             {connected
-              ? "select a preset to continue"
+              ? "select a preset to continue — verification proves the account owner"
               : "connect a wallet, then select a preset"}
           </p>
         )}
@@ -184,14 +184,16 @@ export default function OnboardPage() {
         </label>
         <div className="mt-3 flex items-center justify-between gap-3">
           <p className="text-[11px] text-muted-foreground">
-            {canGrant
-              ? "grant registers the unwinder on the account"
-              : "verify first — the grant follows verification"}
+            {!canGrant
+              ? "verify first — the grant follows verification"
+              : acceptedMechanics
+                ? "grant registers the unwinder on the account"
+                : "confirm the mechanics above to enable the grant"}
           </p>
           <Button
             tone="primary"
             onClick={() => demoActions.grantUnwinder()}
-            disabled={!canGrant || unwinderGranted}
+            disabled={!canGrant || unwinderGranted || !acceptedMechanics}
           >
             <CircleDollarSign className="size-3.5" aria-hidden="true" />
             {unwinderGranted ? "Granted" : "Grant"}

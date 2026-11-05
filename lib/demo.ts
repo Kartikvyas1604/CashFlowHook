@@ -12,7 +12,7 @@ import { useSyncExternalStore } from "react";
 import { marginBreakdown, drawAllowed } from "@/lib/margin";
 
 /** fixed fixture epoch: 2026-11-06 09:00:00 UTC */
-export const NOW = 1_794_042_000;
+export const NOW = 1_793_955_600;
 const HOUR = 3_600;
 const DAY = 86_400;
 
@@ -83,7 +83,11 @@ export const LEGS_FIXTURE = {
 } as const;
 
 export const DEBT_FIXTURE = 74_000; // Aqua virtual balance liability, USDC
-export const INITIAL_DRAWS: Array<{ amountUsd: number; ts: number; memo: string }> = [];
+// one agent draw already sits in the rolling 12 h window (matches the
+// seeded receipt/log rows — window started 5 h ago)
+export const INITIAL_DRAWS: Array<{ amountUsd: number; ts: number }> = [
+  { amountUsd: 1_415.0, ts: NOW - 5 * 3_600 },
+];
 
 /* ------------------------------------------------------------------ */
 /* crash replays (stress tab) — fixture replay inputs, labeled         */
@@ -201,7 +205,7 @@ const initialState: DemoState = {
       ts: NOW - 5 * HOUR,
       kind: "draw",
       label: "agentDraw",
-      detail: "Draw $1,415.00 USDC — within the 2% of BP per-draw cap; debt $74,000.00 ≤ BP $76,065",
+      detail: "Draw $1,415.00 USDC — within the 2% of BP per-draw cap; debt $74,000.00 ≤ BP $76,065.00",
     },
     {
       id: 2,
@@ -302,6 +306,9 @@ export const demoActions = {
       bp: breakdown.bp,
       perDrawCap: caps.perDrawCap,
       drawsInWindow: windowed.length,
+      drawsPerWindow: caps.drawsPerWindow,
+      agentCapped:
+        state.debt >= breakdown.unwindableNow * 0.80 && !caps.elevated,
     });
     if (!verdict.ok) {
       pushReceipt({
@@ -348,7 +355,9 @@ export const demoActions = {
         minimumFractionDigits: 2,
       })} USDC — debt now $${debt.toLocaleString("en-US", {
         minimumFractionDigits: 2,
-      })} (≤ BP $${breakdown.bp.toLocaleString("en-US")})`,
+      })} (≤ BP $${breakdown.bp.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+      })})`,
     });
   },
   repay(amountUsd: number) {
@@ -399,7 +408,9 @@ export const demoActions = {
   gateShut() {
     if (!state.gateOpen) return;
     const breakdown = currentBreakdown();
-    const after = breakdown.unwindableNow - LEGS_FIXTURE.r2.amountUsd * 0.85;
+    const after = Math.round(
+      breakdown.unwindableNow - LEGS_FIXTURE.r2.amountUsd * 0.85
+    );
     const capped = state.debt > after * 0.80;
     commit({ gateOpen: false });
     pushPolicy({

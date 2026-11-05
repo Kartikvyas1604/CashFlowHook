@@ -61,7 +61,9 @@ export default function StressPage() {
             title="Scenario grid"
             caption="loss IM per cell · select a cell for its inputs"
             right={
-              <Badge tone="warning">worst {fiat(bd.im, "detailed")} at sh {num(sel?.sh ?? 0, 2)}</Badge>
+              <Badge tone="warning">
+                worst {fiat(bd.im, "detailed")} at sh {num(bd.worstScenario.sh, 2)}
+              </Badge>
             }
           >
             <div className="overflow-x-auto">

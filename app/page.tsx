@@ -29,7 +29,6 @@ import { FEED, LEGS_FIXTURE, demoActions, effectiveCaps, useBreakdown, useDemo }
 import { duration, fiat, num, pct, ratio, utcClock } from "@/lib/format";
 import {
   AUTONOMY_CAP_PCT,
-  AUTONOMY_MAX_DRAWS,
   TAKER_FLOOR,
   HC_LP,
   HC_R1,
@@ -163,7 +162,10 @@ export default function CreditDeskPage() {
           {/* collateral mix — the segregation story */}
           <Panel
             title="Collateral mix"
-            caption="haircut values by leg — split line at unwindableNow"
+            caption={`haircut values by leg · marked ${fiat(
+              bd.totalCollateralUsd,
+              "detailed"
+            )} — split line sits at unwindableNow`}
             right={
               <div className="flex items-center gap-1.5">
                 <Badge tone="positive">unwindable {fiat(bd.unwindableNow, "detailed")}</Badge>
@@ -353,10 +355,8 @@ export default function CreditDeskPage() {
             title="Autonomy"
             caption="agent draws within hard caps — raising either cap requires a verified human (I7)"
             right={
-              <Badge
-                tone={drawsUsed >= AUTONOMY_MAX_DRAWS ? "warning" : "neutral"}
-              >
-                {drawsUsed}/{AUTONOMY_MAX_DRAWS} draws · 12 h
+              <Badge tone={drawsUsed >= caps.drawsPerWindow ? "warning" : "neutral"}>
+                {drawsUsed}/{caps.drawsPerWindow} draws · 12 h
               </Badge>
             }
           >
@@ -366,29 +366,30 @@ export default function CreditDeskPage() {
                   per-draw cap ({pct(AUTONOMY_CAP_PCT * 100, { decimals: 0 })} of BP)
                 </span>
                 <span className="font-mono text-[13px] tabular-nums">
-                  {fiat(bd.perDrawCap, "detailed")}
+                  {fiat(caps.perDrawCap, "detailed")}
+                  {caps.elevated ? " · ×2 tier" : ""}
                 </span>
               </div>
               <Gauge
                 value={drawsUsed}
-                max={AUTONOMY_MAX_DRAWS}
-                tone={drawsUsed >= AUTONOMY_MAX_DRAWS ? "warning" : "primary"}
-                aria={`draws used ${drawsUsed} of ${AUTONOMY_MAX_DRAWS} per 12 h window`}
-                marks={[{ at: 3, label: "3 draws / 12 h", tone: "warning" }]}
+                max={caps.drawsPerWindow}
+                tone={drawsUsed >= caps.drawsPerWindow ? "warning" : "primary"}
+                aria={`draws used ${drawsUsed} of ${caps.drawsPerWindow} per 12 h window`}
+                marks={[{ at: caps.drawsPerWindow, label: `${caps.drawsPerWindow} draws / 12 h`, tone: "warning" }]}
               />
               <p className="text-[11px] text-muted-foreground">
-                window resets in {duration(windowResetsIn)} · the 4th draw
-                reverts{" "}
+                window resets in {duration(windowResetsIn)} · draw #
+                {caps.drawsPerWindow + 1} reverts{" "}
                 <code className="font-mono text-[11px]">CapExceededBlock</code>
               </p>
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   tone="primary"
-                  onClick={() => demoActions.draw(bd.perDrawCap)}
+                  onClick={() => demoActions.draw(caps.perDrawCap)}
                   title="Agent draw at the full per-draw cap"
                 >
                   <ArrowUpRight className="size-3.5" aria-hidden="true" />
-                  Agent draw · {fiat(bd.perDrawCap, "detailed")}
+                  Agent draw · {fiat(caps.perDrawCap, "detailed")}
                 </Button>
                 <Button
                   onClick={() => demoActions.repay(2_000)}
@@ -561,7 +562,7 @@ export default function CreditDeskPage() {
                       {r.amountUsd == null ? (
                         <span className="text-muted-foreground">--</span>
                       ) : (
-                        <Delta value={r.reverted ? null : -r.amountUsd} />
+                        <Delta value={r.reverted ? null : -r.amountUsd} context="detailed" />
                       )}
                       <p className="font-mono text-[10.5px] text-muted-foreground">
                         {utcClock(r.ts)}

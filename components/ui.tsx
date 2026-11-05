@@ -384,7 +384,7 @@ export function Skeleton({ className = "" }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className={`animate-pulse rounded-sm bg-muted ${className}`}
+      className={`rounded-sm bg-muted motion-safe:animate-pulse ${className}`}
     />
   );
 }
