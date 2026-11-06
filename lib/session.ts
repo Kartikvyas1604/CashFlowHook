@@ -1,22 +1,30 @@
 /**
  * Session store — sign-in gate for the demo app.
  *
- * The demo accepts any well-formed email + any password ≥ 8 chars (the
- * credentials never leave the store; there is no backend). What IS real
- * is the state machine every app needs: idle → validating → signed-in,
- * with field-level validation errors and a session error path.
+ * Two auth paths:
+ *  - privy: Privy (email/wallet) drives the session; lib bridge mirrors
+ *    the Privy user into this store (components/privy.tsx). Sign-out
+ *    requests route through Privy's logout to close its session too.
+ *  - demo: fallback used ONLY when no Privy app id is configured — any
+ *    well-formed email + password ≥ 8 chars signs in (disclosed in UI).
  *
- * Snapshots must be stable objects (useSyncExternalStore contract) —
- * the session object is only replaced on a real state change.
+ * Every action PRUNES no-op commits so `getSnapshot` stays a stable
+ * object between real changes (useSyncExternalStore contract).
  */
 
 import { useSyncExternalStore } from "react";
+
+export type SessionProvider = "privy" | "demo";
 
 export type SessionState = {
   status: "signed-out" | "validating" | "signed-in";
   email: string | null;
   /** last submitted-but-rejected reason, cleared on next attempt */
   error: string | null;
+  /** which auth path is holding the session */
+  provider: SessionProvider | null;
+  /** set so the Privy bridge runs the real logout() on its own tick */
+  pendingSignOut: boolean;
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -37,11 +45,17 @@ export function validatePassword(value: string): string | null {
   return null;
 }
 
-let state: SessionState = {
-  status: "signed-out",
-  email: null,
-  error: null,
-};
+function freshSignOut(): SessionState {
+  return {
+    status: "signed-out",
+    email: null,
+    error: null,
+    provider: null,
+    pendingSignOut: false,
+  };
+}
+
+let state: SessionState = freshSignOut();
 
 const listeners = new Set<() => void>();
 
@@ -53,9 +67,39 @@ function commit(next: SessionState) {
 let timer: ReturnType<typeof setTimeout> | null = null;
 
 export const sessionActions = {
-  /** validate → brief validating state → signed-in (deterministic demo) */
-  signIn(email: string, password: string): { emailError: string | null; passwordError: string | null } {
-    if (state.status === "validating") return { emailError: null, passwordError: null };
+  /** Privy confirmed an authenticated user — mirror it (no-op-safe). */
+  privySignIn(email: string | null) {
+    if (state.pendingSignOut || state.status === "validating") return;
+    if (
+      state.provider === "privy" &&
+      state.status === "signed-in" &&
+      state.email === email
+    ) {
+      return; // identical — keep the snapshot stable
+    }
+    commit({
+      status: "signed-in",
+      email,
+      error: null,
+      provider: "privy",
+      pendingSignOut: false,
+    });
+  },
+
+  /** Privy reported no session — clear it only if Privy owns ours. */
+  privySessionInactive() {
+    if (state.provider !== "privy") return;
+    commit(freshSignOut());
+  },
+
+  /** demo fallback sign-in (only when Privy is not configured) */
+  signIn(email: string, password: string): {
+    emailError: string | null;
+    passwordError: string | null;
+  } {
+    if (state.status === "validating") {
+      return { emailError: null, passwordError: null };
+    }
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
     if (emailError ?? passwordError) {
@@ -66,19 +110,28 @@ export const sessionActions = {
     commit({ status: "validating", email: clean, error: null });
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
-      // demo rule (disclosed on the login card): well-formed credentials
-      // sign in; the app holds no real accounts
-      commit({ status: "signed-in", email: clean, error: null });
+      commit({
+        status: "signed-in",
+        email: clean,
+        error: null,
+        provider: "demo",
+        pendingSignOut: false,
+      });
     }, 900);
     return { emailError: null, passwordError: null };
   },
 
   signOut() {
+    if (state.provider === "privy") {
+      if (state.pendingSignOut) return;
+      commit({ ...state, pendingSignOut: true }); // bridge completes via logout()
+      return;
+    }
     if (timer) {
       clearTimeout(timer);
       timer = null;
     }
-    commit({ status: "signed-out", email: null, error: null });
+    commit(freshSignOut());
   },
 };
 
