@@ -1,53 +1,48 @@
 /**
- * UI primitives — Workstation Dense credit desk.
- * Flat panels, border-separated, 4px spacing grid, mono numerals,
- * functional motion only (100–150ms colors, reduced-motion honored).
+ * UI primitives — Quiet Pro.
+ * One idea per card, generous padding, hairline borders, single accent.
+ * Numbers stay mono + tabular; everything colorized is backed by tokens.
  */
 
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 import Link from "next/link";
-import { delta, ratio } from "@/lib/format";
 
-export const RING =
-  "outline-ring outline-offset-2 outline outline-0 focus-visible:outline-2 motion-reduce:transition-none";
+export const FOCUS =
+  "outline-offset-2 outline-0 outline-ring focus-visible:outline-2 motion-reduce:transition-none";
 
 /* ------------------------------------------------------------------ */
-/* Panel                                                               */
+/* Card                                                                */
 /* ------------------------------------------------------------------ */
 
-export function Panel({
+export function Card({
   title,
   caption,
-  right,
+  action,
   children,
   className = "",
-  bodyClassName = "",
 }: {
-  title: string;
+  title?: string;
   caption?: string;
-  right?: ReactNode;
+  action?: ReactNode;
   children: ReactNode;
   className?: string;
-  bodyClassName?: string;
 }) {
   return (
     <section
-      className={`flex flex-col rounded-md border border-border bg-card ${className}`}
+      className={`flex flex-col rounded-lg border border-border bg-card ${className}`}
     >
-      <header className="flex items-baseline justify-between gap-4 border-b border-border px-4 py-2.5">
-        <div className="min-w-0">
-          <h2 className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-            {title}
-          </h2>
-          {caption ? (
-            <p className="mt-0.5 truncate text-[11px] text-muted-foreground/80">
-              {caption}
-            </p>
-          ) : null}
-        </div>
-        {right ? <div className="shrink-0">{right}</div> : null}
-      </header>
-      <div className={`px-4 py-3 ${bodyClassName}`}>{children}</div>
+      {title ? (
+        <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-5 pb-0 pt-4">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold">{title}</h2>
+            {caption ? (
+              <p className="mt-0.5 text-xs text-muted-foreground">{caption}</p>
+            ) : null}
+          </div>
+          {action ? <div className="shrink-0">{action}</div> : null}
+        </header>
+      ) : null}
+      <div className="flex-1 px-5 py-4">{children}</div>
     </section>
   );
 }
@@ -56,10 +51,7 @@ export function Panel({
 /* Badge                                                               */
 /* ------------------------------------------------------------------ */
 
-const BADGE_TONES: Record<
-  string,
-  string
-> = {
+const BADGE_TONES: Record<string, string> = {
   neutral: "border-border bg-secondary text-secondary-foreground",
   primary: "border-primary/40 bg-primary/10 text-primary",
   positive: "border-positive/40 bg-positive/10 text-positive",
@@ -79,7 +71,7 @@ export function Badge({
   return (
     <span
       title={title}
-      className={`inline-flex items-center gap-1 whitespace-nowrap rounded border px-1.5 py-0.5 text-[11px] font-medium ${
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium ${
         BADGE_TONES[tone] ?? BADGE_TONES.neutral
       }`}
     >
@@ -93,20 +85,18 @@ export function Badge({
 /* ------------------------------------------------------------------ */
 
 const BUTTON_TONES: Record<string, string> = {
-  primary:
-    "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
+  primary: "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
   secondary:
-    "border-border bg-secondary text-secondary-foreground hover:bg-secondary/80",
-  ghost:
-    "border-transparent bg-transparent text-foreground hover:bg-secondary",
+    "border-border bg-secondary text-secondary-foreground hover:bg-secondary/70",
+  ghost: "border-transparent bg-transparent text-foreground hover:bg-secondary/60",
   destructive:
     "border-destructive/60 bg-destructive/10 text-destructive hover:bg-destructive/20",
 };
 
 const BUTTON_SIZES: Record<string, string> = {
-  sm: "h-7 px-2 text-xs",
-  md: "h-8 px-3 text-[13px]",
-  lg: "h-9 px-4 text-sm",
+  sm: "h-8 px-3 text-xs",
+  md: "h-9 px-4 text-[13px]",
+  lg: "h-10 px-5 text-sm",
 };
 
 export function Button({
@@ -121,7 +111,7 @@ export function Button({
 }) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-1.5 rounded-md border font-medium transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40 ${RING} ${BUTTON_TONES[tone]} ${BUTTON_SIZES[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-md border font-medium transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40 ${FOCUS} ${BUTTON_TONES[tone]} ${BUTTON_SIZES[size]} ${className}`}
       {...rest}
     >
       {children}
@@ -130,21 +120,46 @@ export function Button({
 }
 
 /* ------------------------------------------------------------------ */
-/* Stat cell                                                           */
+/* Button as link                                                      */
+/* ------------------------------------------------------------------ */
+
+export function ButtonLink({
+  href,
+  tone = "secondary",
+  size = "md",
+  className = "",
+  children,
+}: {
+  href: string;
+  tone?: keyof typeof BUTTON_TONES;
+  size?: keyof typeof BUTTON_SIZES;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-md border font-medium transition-colors duration-150 ${FOCUS} ${BUTTON_TONES[tone]} ${BUTTON_SIZES[size]} ${className}`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Stat — large numeral with a single calm hint                        */
 /* ------------------------------------------------------------------ */
 
 export function Stat({
   label,
   value,
-  sub,
+  hint,
   tone = "default",
-  aria,
 }: {
   label: string;
   value: ReactNode;
-  sub?: ReactNode;
+  hint?: ReactNode;
   tone?: "default" | "positive" | "warning" | "destructive";
-  aria?: string;
 }) {
   const valueTone =
     tone === "positive"
@@ -155,197 +170,135 @@ export function Stat({
           ? "text-destructive"
           : "text-foreground";
   return (
-    <div
-      className="flex flex-col gap-0.5"
-      aria-label={aria}
-    >
-      <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-        {label}
-      </span>
-      <span className={`font-mono text-[15px] tabular-nums ${valueTone}`}>
+    <div className="flex flex-col gap-1">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span
+        className={`font-mono text-2xl tabular-nums leading-tight ${valueTone}`}
+      >
         {value}
       </span>
-      {sub ? (
-        <span className="text-[11px] text-muted-foreground">{sub}</span>
-      ) : null}
+      {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Delta — sign always shown, color assists only                       */
+/* Input with label + inline error                                     */
 /* ------------------------------------------------------------------ */
 
-export function Delta({
-  value,
-  context = "compact",
-}: {
-  value: number | null | undefined;
-  context?: "compact" | "detailed";
-}) {
-  const text = delta(value, context);
-  const positive = (value ?? 0) > 0;
-  const negative = (value ?? 0) < 0;
-  return (
-    <span
-      className={`font-mono tabular-nums ${
-        positive
-          ? "text-positive"
-          : negative
-            ? "text-destructive"
-            : "text-muted-foreground"
-      }`}
-      aria-label={
-        positive
-          ? `increase of ${text}`
-          : negative
-            ? `decrease of ${text}`
-            : `no change: ${text}`
-      }
-    >
-      {text}
-    </span>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Horizontal gauge with a maintenance tick                            */
-/* ------------------------------------------------------------------ */
-
-export function Gauge({
-  value,
-  min = 0,
-  max = 2,
-  marks = [],
-  tone = "primary",
+export function Field({
   label,
-  valueText,
-  aria,
+  htmlFor,
+  error,
+  hint,
+  children,
 }: {
-  value: number | null | undefined;
-  min?: number;
-  max?: number;
-  /** vertical marks [{ at, label, tone }] */
-  marks?: Array<{ at: number; label: string; tone?: "warning" | "destructive" | "muted" }>;
-  tone?: "primary" | "positive" | "warning" | "destructive";
-  label?: string;
-  /** exact displayed value (aria + external display) */
-  valueText?: string;
-  /** explicit aria-label; falls back to label/valueText + marks */
-  aria?: string;
-}) {
-  const ok = value != null && Number.isFinite(value) && value >= min;
-  const pctFilled =
-    !ok || value == null
-      ? 0
-      : Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
-  const barTone =
-    tone === "positive"
-      ? "bg-positive"
-      : tone === "warning"
-        ? "bg-warning"
-        : tone === "destructive"
-          ? "bg-destructive"
-          : "bg-primary";
-  const markTone = (t?: string) =>
-    t === "warning"
-      ? "bg-warning"
-      : t === "destructive"
-        ? "bg-destructive"
-        : "bg-muted-foreground";
-  const described =
-    aria ?? (label ?? [
-      valueText ? `gauge at ${valueText}` : "gauge",
-      ...marks.map((m) => `${m.label} at ${ratio(m.at)}`),
-    ].join("; "));
-  return (
-    <div
-      role="img"
-      aria-label={described}
-      className="flex flex-col gap-1"
-    >
-      <div className="relative h-2 overflow-hidden rounded-sm bg-secondary">
-        <div
-          className={`absolute inset-y-0 left-0 rounded-sm transition-[width] duration-150 motion-reduce:transition-none ${barTone}`}
-          style={{ width: ok ? `${pctFilled}%` : "0%" }}
-        />
-        {marks.map((m, i) => (
-          <div
-            key={i}
-            title={m.label}
-            className={`absolute w-px inset-y-0 ${markTone(m.tone)}`}
-            style={{ left: `${((m.at - min) / (max - min)) * 100}%` }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Segmented bar (collateral mix)                                      */
-/* ------------------------------------------------------------------ */
-
-export function SegmentedBar({
-  segments,
-  splitFrac,
-}: {
-  /** [{ frac (0..1), tone, label, title }] */
-  segments: Array<{
-    frac: number;
-    tone: string;
-    label: string;
-    title?: string;
-  }>;
-  /** optional marker line across the bar at this fraction (unwindable split) */
-  splitFrac?: number;
+  label: string;
+  htmlFor: string;
+  error?: string | null;
+  hint?: string;
+  children: ReactNode;
 }) {
   return (
-    <div
-      role="img"
-      aria-label={segments
-        .filter((s) => s.frac > 0)
-        .map((s) => s.label)
-        .join(", ")}
-      className="relative flex h-16 w-full overflow-hidden rounded-md border border-border"
-    >
-      {segments.map((s, i) => (
-        <div
-          key={i}
-          title={s.title ?? s.label}
-          className={`flex min-w-0 items-end p-2 ${s.tone} border-r border-border/60 last:border-r-0`}
-          style={{ width: `${s.frac * 100}%` }}
-        >
-          <span className="truncate font-mono text-[11px] tabular-nums text-foreground/90">
-            {s.label}
-          </span>
-        </div>
-      ))}
-      {splitFrac != null ? (
-        <div
-          title="unwindableNow split"
-          className="absolute inset-y-0 w-px bg-foreground/60"
-          style={{ left: `${splitFrac * 100}%` }}
-        />
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={htmlFor} className="text-xs font-medium">
+        {label}
+      </label>
+      {children}
+      {error ? (
+        <p id={`${htmlFor}-error`} role="alert" className="text-xs text-destructive">
+          {error}
+        </p>
+      ) : hint ? (
+        <p className="text-xs text-muted-foreground">{hint}</p>
       ) : null}
     </div>
   );
 }
 
+export function Input({
+  className = "",
+  invalid,
+  ...rest
+}: InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }) {
+  return (
+    <input
+      className={`h-10 w-full rounded-md border bg-input px-3 text-sm text-foreground outline-offset-2 outline-0 outline-ring transition-colors duration-150 focus-visible:outline-2 placeholder:text-muted-foreground/70 aria-invalid:border-destructive ${FOCUS} ${
+        invalid ? "border-destructive/60" : "border-border"
+      } ${className}`}
+      {...rest}
+    />
+  );
+}
+
 /* ------------------------------------------------------------------ */
-/* Table helpers — text-left labels, right-aligned mono numerals       */
+/* Checkbox row (labelled)                                             */
 /* ------------------------------------------------------------------ */
 
-export function Th({
+export function CheckRow({
+  checked,
+  onChange,
   children,
-  numeric = false,
 }: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
   children: ReactNode;
-  numeric?: boolean;
 }) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3 text-[13px] leading-6">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-1 accent-[var(--primary)]"
+      />
+      <span>{children}</span>
+    </label>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Sidebar link                                                        */
+/* ------------------------------------------------------------------ */
+
+export function SidebarLink({
+  href,
+  active,
+  children,
+  icon,
+}: {
+  href: string;
+  active: boolean;
+  children: ReactNode;
+  icon: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors duration-150 ${FOCUS} ${
+        active
+          ? "bg-secondary text-foreground"
+          : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+      }`}
+    >
+      <span className="shrink-0" aria-hidden="true">
+        {icon}
+      </span>
+      {children}
+    </Link>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Table cells                                                         */
+/* ------------------------------------------------------------------ */
+
+export function Th({ children, numeric = false }: { children: ReactNode; numeric?: boolean }) {
   return (
     <th
-      className={`border-b border-border px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground ${
+      scope="col"
+      className={`border-b border-border px-4 py-2.5 text-xs font-medium text-muted-foreground ${
         numeric ? "text-right" : "text-left"
       }`}
     >
@@ -358,21 +311,46 @@ export function Td({
   children,
   numeric = false,
   mono = false,
-  className = "",
 }: {
   children: ReactNode;
   numeric?: boolean;
   mono?: boolean;
-  className?: string;
 }) {
   return (
     <td
-      className={`border-b border-border/60 px-3 py-2 text-[13px] ${
+      className={`border-b border-border/50 px-4 py-3 text-[13px] ${
         numeric ? "text-right font-mono tabular-nums" : mono ? "font-mono" : ""
-      } ${className}`}
+      }`}
     >
       {children}
     </td>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Dual-signal bar (collateral allocation)                             */
+/* ------------------------------------------------------------------ */
+
+export function AllocationBar({
+  segments,
+}: {
+  segments: Array<{ frac: number; className: string; label: string; title?: string }>;
+}) {
+  return (
+    <div
+      role="img"
+      aria-label={segments.filter((s) => s.frac > 0).map((s) => s.label).join(", ")}
+      className="flex h-2.5 w-full overflow-hidden rounded-full bg-secondary"
+    >
+      {segments.map((s, i) => (
+        <div
+          key={i}
+          title={s.title ?? s.label}
+          className={s.className}
+          style={{ width: `${s.frac * 100}%` }}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -384,35 +362,29 @@ export function Skeleton({ className = "" }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className={`rounded-sm bg-muted motion-safe:animate-pulse ${className}`}
+      className={`rounded-md bg-muted motion-safe:animate-pulse ${className}`}
     />
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Nav tab                                                             */
+/* Empty state                                                         */
 /* ------------------------------------------------------------------ */
 
-export function NavTab({
-  href,
-  active,
-  children,
+export function Empty({
+  title,
+  hint,
+  action,
 }: {
-  href: string;
-  active: boolean;
-  children: ReactNode;
+  title: string;
+  hint?: string;
+  action?: ReactNode;
 }) {
   return (
-    <Link
-      href={href}
-      aria-current={active ? "page" : undefined}
-      className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 ${RING} ${
-        active
-          ? "bg-secondary text-foreground"
-          : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
-      }`}
-    >
-      {children}
-    </Link>
+    <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-6 py-10 text-center">
+      <p className="text-[13px] font-medium">{title}</p>
+      {hint ? <p className="max-w-sm text-xs text-muted-foreground">{hint}</p> : null}
+      {action ? <div className="mt-1">{action}</div> : null}
+    </div>
   );
 }
