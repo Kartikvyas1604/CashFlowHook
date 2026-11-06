@@ -41,7 +41,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isLogin = pathname === "/login";
   const authed = session.status === "signed-in";
 
-  // session gate — hook called unconditionally (rules of hooks)
+  // session gate — hooks run on EVERY render, before any early return
+  // (rules of hooks: the count and order must never change per route)
   useEffect(() => {
     if (!isLogin && !authed) {
       router.replace("/login");
