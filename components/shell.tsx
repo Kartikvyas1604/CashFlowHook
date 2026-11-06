@@ -36,16 +36,16 @@ export function AppChrome({ children }: { children: ReactNode }) {
     <div className="flex min-h-full flex-col bg-background text-foreground">
       {/* top bar */}
       <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-11 max-w-[1400px] items-center gap-4 px-4">
+        <div className="mx-auto flex h-11 max-w-[1400px] items-center gap-2 px-4 sm:gap-4">
           <Link
             href="/"
             className="flex items-center gap-2 rounded-md outline-offset-4 outline-0 outline-ring focus-visible:outline-2 motion-reduce:transition-none"
           >
             <Waypoints className="size-4 text-primary" aria-hidden="true" />
-            <span className="text-[13px] font-semibold tracking-tight">
+            <span className="text-[13px] font-semibold tracking-tight hidden sm:inline">
               CashflowHook
             </span>
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-[11px] text-muted-foreground hidden md:inline">
               credit desk
             </span>
           </Link>
@@ -58,18 +58,27 @@ export function AppChrome({ children }: { children: ReactNode }) {
             ))}
           </nav>
 
-          <div className="ml-auto flex items-center gap-2">
-            {/* persistent badge (§6.8 copy rule) */}
-            <span className="inline-flex items-center gap-1 whitespace-nowrap rounded border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+            {/* persistent badge (§6.8 copy rule) — full text on ≥sm,
+                icon-only at phone widths with the text kept for readers */}
+            <span
+              title="Non-custodial — borrowed liquidity lives as an Aqua virtual balance; your tokens never move to the protocol"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary"
+            >
               <ShieldCheck className="size-3" aria-hidden="true" />
-              Non-custodial · Aqua virtual balance
+              <span className="hidden sm:inline">
+                Non-custodial · Aqua virtual balance
+              </span>
+              <span className="sr-only sm:hidden">
+                Non-custodial · Aqua virtual balance
+              </span>
             </span>
             <Link
               href="/onboard"
               className="inline-flex items-center gap-1.5 whitespace-nowrap rounded border border-border bg-secondary px-1.5 py-0.5 text-[11px] text-secondary-foreground transition-colors duration-150 hover:bg-secondary/80 outline-offset-2 outline-0 outline-ring focus-visible:outline-2 motion-reduce:transition-none"
             >
               <Wallet className="size-3" aria-hidden="true" />
-              demo account · fixture
+              <span className="hidden md:inline">demo account ·</span> fixture
             </Link>
           </div>
         </div>
@@ -82,7 +91,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
           className="fixed inset-x-0 top-14 z-50 flex justify-center px-4"
         >
           <div
-            className={`flex max-w-xl items-start gap-3 rounded-md border px-3 py-2 shadow-lg backdrop-blur ${
+            className={`beat-toast flex max-w-xl items-start gap-3 rounded-md border px-3 py-2 shadow-lg backdrop-blur ${
               beat.tone === "destructive"
                 ? "border-destructive/50 bg-destructive/10 text-foreground"
                 : beat.tone === "warning"
@@ -102,7 +111,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
               type="button"
               onClick={() => demoActions.dismissBeat()}
               aria-label="Dismiss notification"
-              className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors duration-150 hover:text-foreground outline-offset-2 outline-0 outline-ring focus-visible:outline-2 motion-reduce:transition-none"
+              className="shrink-0 rounded p-1.5 text-muted-foreground transition-colors duration-150 hover:text-foreground outline-offset-2 outline-0 outline-ring focus-visible:outline-2 motion-reduce:transition-none"
             >
               <X className="size-3.5" aria-hidden="true" />
             </button>

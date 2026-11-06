@@ -97,12 +97,44 @@ export default function StressPage() {
                             ? Math.min(1, cell.lossIM / bd.im)
                             : 0;
                         const worst = s === bd.worstScenario.s;
-                        const alpha = Math.round(8 + intensity * 62);
+                        // alpha ramp 8..70 → bucket classes (skip the
+                        // 32–44% contrast dead zone; see globals.css)
+                        const alpha = 8 + intensity * 62;
+                        const bucket =
+                          alpha >= 62
+                            ? "heat-a6"
+                            : alpha >= 50
+                              ? "heat-a5"
+                              : alpha >= 38
+                                ? "heat-a4"
+                                : alpha >= 28
+                                  ? "heat-a3"
+                                  : alpha >= 20
+                                    ? "heat-a2"
+                                    : alpha >= 12
+                                      ? "heat-a1"
+                                      : "heat-a0";
                         return (
                           <td key={s} className="p-0">
                             <button
                               type="button"
                               onClick={() => setSelected(s)}
+                              onKeyDown={(e) => {
+                                const grid = { i, j };
+                                if (e.key === "ArrowRight") {
+                                  setSelected(Math.min(7, grid.i + 1) * 2 + grid.j);
+                                  e.preventDefault();
+                                } else if (e.key === "ArrowLeft") {
+                                  setSelected(Math.max(0, grid.i - 1) * 2 + grid.j);
+                                  e.preventDefault();
+                                } else if (e.key === "ArrowDown") {
+                                  setSelected(grid.i * 2 + Math.min(1, grid.j + 1));
+                                  e.preventDefault();
+                                } else if (e.key === "ArrowUp") {
+                                  setSelected(grid.i * 2 + Math.max(0, grid.j - 1));
+                                  e.preventDefault();
+                                }
+                              }}
                               aria-label={`Scenario ${s}: shock ${pct(
                                 cell.sh * 100,
                                 { decimals: 0 }
@@ -113,22 +145,11 @@ export default function StressPage() {
                               title={`sh ${pct(cell.sh * 100, { decimals: 0 })} · loss ${fiat(
                                 cell.lossIM
                               )}`}
-                              className={`w-full rounded-sm px-2 py-1.5 text-right font-mono text-[11.5px] tabular-nums transition-all duration-150 motion-reduce:transition-none outline-offset-2 outline-0 outline-ring focus-visible:outline-2 ${
+                              className={`w-full min-h-9 rounded-sm px-2 py-2 text-right font-mono text-[11.5px] tabular-nums transition-shadow duration-150 motion-reduce:transition-none outline-offset-2 outline-0 outline-ring focus-visible:outline-2 hover:outline-1 ${
                                 worst
-                                  ? "ring-1 ring-destructive/60"
-                                  : selected === s
-                                    ? "ring-1 ring-ring"
-                                    : ""
+                                  ? "bg-destructive text-destructive-foreground ring-1 ring-destructive/60"
+                                  : `${bucket} ${selected === s ? "ring-1 ring-ring" : ""}`
                               }`}
-                              style={{
-                                background: `color-mix(in oklab, ${
-                                  intensity > 0.96 ? "var(--destructive)" : "var(--primary)"
-                                } ${alpha}%, var(--card))`,
-                                color:
-                                  alpha > 40
-                                    ? "var(--foreground)"
-                                    : "var(--muted-foreground)",
-                              }}
                             >
                               {fiat(cell.lossIM)}
                             </button>

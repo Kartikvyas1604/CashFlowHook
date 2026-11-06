@@ -532,11 +532,13 @@ export const demoActions = {
 /* derived                                                             */
 /* ------------------------------------------------------------------ */
 
-/** ledger-derived breakdown with the CURRENT store state applied */
+/** ledger-derived breakdown with the CURRENT store state applied.
+ *  Cached so `getSnapshot` (client AND server) returns a stable object
+ *  between commits — a fresh object per call makes React loop forever. */
 export function currentBreakdown() {
   if (cachedBreakdown) return cachedBreakdown;
   const s = state;
-  return marginBreakdown({
+  cachedBreakdown = marginBreakdown({
     stockUsd: LEGS_FIXTURE.stock.amountUsd,
     lpUsd: LEGS_FIXTURE.lp.amountUsd,
     equityRwaUsd: LEGS_FIXTURE.r1.amountUsd,
@@ -551,6 +553,7 @@ export function currentBreakdown() {
       navStalenessSeconds: LEGS_FIXTURE.r2.stalenessSeconds,
     },
   });
+  return cachedBreakdown;
 }
 
 /** elevated tier while an accepted Agent Pass step-up is live (24 h) */

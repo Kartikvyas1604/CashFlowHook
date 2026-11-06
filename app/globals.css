@@ -93,4 +93,49 @@
   * {
     border-color: var(--border);
   }
+
+  /* touch hit targets — interactive elements get a floor on coarse pointers */
+  @media (pointer: coarse) {
+    button,
+    a,
+    [role="button"] {
+      min-height: 44px;
+    }
+  }
+
+  /* functional entrance for the beat toast (causal arrival, 150ms);
+     none under reduced motion */
+  .beat-toast {
+    animation: beat-in 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  @keyframes beat-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .beat-toast {
+      animation: none;
+    }
+  }
+
+  /* heat-ramp buckets — contrast-validated per mode (WCAG AA ≥ 4.5:1):
+     light mode uses --foreground at every alpha; dark mode flips to
+     --primary-foreground from 44% up (32–44% is a computed dead zone,
+     buckets skip it). Worst cell uses the solid destructive pair. */
+  .heat-a0 { background: color-mix(in oklab, var(--primary) 8%, var(--card)); color: var(--foreground); }
+  .heat-a1 { background: color-mix(in oklab, var(--primary) 16%, var(--card)); color: var(--foreground); }
+  .heat-a2 { background: color-mix(in oklab, var(--primary) 24%, var(--card)); color: var(--foreground); }
+  .heat-a3 { background: color-mix(in oklab, var(--primary) 32%, var(--card)); color: var(--foreground); }
+  .heat-a4 { background: color-mix(in oklab, var(--primary) 44%, var(--card)); color: var(--foreground); }
+  .heat-a5 { background: color-mix(in oklab, var(--primary) 56%, var(--card)); color: var(--foreground); }
+  .heat-a6 { background: color-mix(in oklab, var(--primary) 68%, var(--card)); color: var(--foreground); }
+  .dark .heat-a4 { color: var(--primary-foreground); }
+  .dark .heat-a5 { color: var(--primary-foreground); }
+  .dark .heat-a6 { color: var(--primary-foreground); }
 }
