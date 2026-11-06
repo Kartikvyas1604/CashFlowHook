@@ -60,15 +60,6 @@ export default function OnboardPage() {
 
   const passOk = validatePassword(passphrase) === null;
   const canVerify = preset != null && passOk && !worldVerified;
-  const canGrant = worldVerified && mechanics && !unwinderGranted;
-
-  function handleStep1() {
-    if (preset == null) {
-      setPresetError("Choose an account preset before verifying");
-      return;
-    }
-    if (!connected) demoActions.connectWallet();
-  }
 
   function handleVerify() {
     if (preset == null) {
@@ -137,6 +128,7 @@ export default function OnboardPage() {
                 onChange={() => {
                   setPreset(p.id);
                   setPresetError(null);
+                  if (!connected) demoActions.connectWallet();
                 }}
                 className="mt-1 accent-[var(--primary)]"
               />

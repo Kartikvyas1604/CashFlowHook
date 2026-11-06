@@ -38,18 +38,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const session = useSession();
   const { beat } = useDemo();
 
-  // login page renders outside the chrome
-  if (pathname === "/login") return <>{children}</>;
-
-  // session gate → /login
+  const isLogin = pathname === "/login";
   const authed = session.status === "signed-in";
-  const wantsIn = pathname !== "/login";
 
+  // session gate — hook called unconditionally (rules of hooks)
   useEffect(() => {
-    if (!authed && wantsIn) {
+    if (!isLogin && !authed) {
       router.replace("/login");
     }
-  }, [authed, wantsIn, router]);
+  }, [isLogin, authed, router]);
+
+  if (isLogin) return <>{children}</>;
 
   if (!authed) {
     return (

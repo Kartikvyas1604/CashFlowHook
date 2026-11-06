@@ -12,7 +12,6 @@ import { ShieldCheck } from "lucide-react";
 import { Badge, Button, Card, Empty, Field, Input, Td, Th } from "@/components/ui";
 import {
   FEED,
-  LEGS_FIXTURE,
   demoActions,
   effectiveCaps,
   useBreakdown,
