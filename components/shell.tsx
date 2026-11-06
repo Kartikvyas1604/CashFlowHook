@@ -15,7 +15,7 @@ import {
   LayoutDashboard,
   ListChecks,
   ShieldCheck,
-  SignOut,
+  LogOut,
   SquareUser,
   Waypoints,
   X,
@@ -120,7 +120,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               aria-label="Sign out"
               className={`flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-foreground ${FOCUS}`}
             >
-              <SignOut className="size-3.5" aria-hidden="true" />
+              <LogOut className="size-3.5" aria-hidden="true" />
               Sign out
             </button>
           </div>

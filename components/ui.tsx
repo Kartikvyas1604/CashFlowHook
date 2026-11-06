@@ -156,7 +156,8 @@ export function Stat({
   hint,
   tone = "default",
 }: {
-  label: string;
+  /** render nothing when the wrapping card already titles it */
+  label?: string;
   value: ReactNode;
   hint?: ReactNode;
   tone?: "default" | "positive" | "warning" | "destructive";
@@ -171,7 +172,11 @@ export function Stat({
           : "text-foreground";
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      {label ? (
+        <span className="text-xs text-muted-foreground" aria-hidden="false">
+          {label}
+        </span>
+      ) : null}
       <span
         className={`font-mono text-2xl tabular-nums leading-tight ${valueTone}`}
       >

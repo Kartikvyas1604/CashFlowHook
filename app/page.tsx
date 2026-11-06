@@ -146,7 +146,7 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        <Card title="Borrowing power" caption="BP = floor(C_stressed × 0.80)">
+        <Card title="Borrowing power" caption="floor(C_stressed × 0.80)">
           <Stat
             value={fiat(bd.bp, "detailed")}
             hint={`USDC · C_stressed ${fiat(bd.cStressed, "detailed")}`}
