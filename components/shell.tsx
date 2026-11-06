@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { SidebarLink, FOCUS } from "@/components/ui";
 import { sessionActions, useSession } from "@/lib/session";
+import { PRIVY_ENABLED } from "@/components/privy";
 import { demoActions, useDemo, useBreakdown } from "@/lib/demo";
 import { fiat, ratio } from "@/lib/format";
 
@@ -41,20 +42,26 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isLogin = pathname === "/login";
   const authed = session.status === "signed-in";
 
+  // with Privy enabled, wait for its initial auth decision before the
+  // gate routes anywhere (the bridge commits signed-in or stays silent)
+  const gateReady =
+    !PRIVY_ENABLED || session.status !== "signed-out";
+
   // session gate — hooks run on EVERY render, before any early return
   // (rules of hooks: the count and order must never change per route)
   useEffect(() => {
-    if (!isLogin && !authed) {
-      router.replace("/login");
-    }
-  }, [isLogin, authed, router]);
+    if (isLogin || authed || !gateReady) return;
+    router.replace("/login");
+  }, [isLogin, authed, gateReady, router]);
 
   if (isLogin) return <>{children}</>;
 
   if (!authed) {
     return (
       <div className="flex min-h-full flex-col items-center justify-center gap-2 px-6 text-center">
-        <p className="text-sm text-muted-foreground">Taking you to sign in…</p>
+        <p className="text-sm text-muted-foreground">
+          {gateReady ? "Taking you to sign in…" : "Checking your session…"}
+        </p>
       </div>
     );
   }
@@ -110,9 +117,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex items-center justify-between gap-2">
             <span
               className="truncate text-xs text-muted-foreground"
-              title={session.email ?? undefined}
+              title={session.email ?? "Privy wallet session"}
             >
-              {session.email}
+              {session.email ?? "Privy wallet"}
             </span>
             <button
               type="button"
