@@ -132,6 +132,14 @@ Banned (CI-enforced, from Agent.md §0.5): "risk-free", "guaranteed", "unhackabl
 
 > "Borrowing power $128,450.00 USDC — fee credit + coupon accrual, 10% cap applied. Treasury leg earns but stays locked: redemption is capped at $25,000,000 per investor per day."
 
+## Bottom line (update)
+
+_Applied 2026-11-06 (after first ship): per product owner review, the Workstation-Dense
+terminal treatment was replaced by the **Quiet Pro** direction — same Cobalt Grid
+palette + Geist/Geist Mono (both re-validated), but spacious layout, a real sidebar
+shell, a login gate with field validation, and a single-idea-per-card dashboard.
+Everything numeric/semantic from Agent.md is unchanged._
+
 ## Usage dos and don'ts
 
 **Do:**
