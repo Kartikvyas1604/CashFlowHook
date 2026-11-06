@@ -1,0 +1,21 @@
+[profile.default]
+src = "contracts"
+out = "out"
+libs = ["lib"]
+test = "test"
+script = "script"
+solc_version = "0.8.26"
+optimizer = true
+optimizer_runs = 2000
+via_ir = false
+evm_version = "cancun"
+bytecode_hash = "none"
+fs_permissions = [{ access = "read", path = "test/fixtures" }, { access = "read", path = "out" }]
+gas_reports = ["CreditEngine", "RwaStressLib", "SpanMathLib"]
+
+[profile.fork]
+# mainnet-fork tests (G-RWA-1 verification against the real USDY oracle)
+fs_permissions = [{ access = "read", path = "test/fixtures" }]
+
+[rpc_endpoints]
+eth_mainnet = "${RPC_ETH_MAINNET}"

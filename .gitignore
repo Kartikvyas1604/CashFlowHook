@@ -40,3 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /agent/  # root-only: project spec dir (was silently matching app/agent/)
+# foundry
+cache/
+out/
+broadcast/
