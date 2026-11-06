@@ -1,103 +1,132 @@
 "use client";
 
 /**
- * Onboard (§6.8 screen 1): connect wallet → select the demo preset →
- * World sign-in → grant Unwinder → show the granted caps. One screen,
- * sequential enablement — every prerequisite has helper text.
+ * Setup (§6.8 screen 1, Quiet Pro presentation).
+ * Three steps in one screen: choose the preset, verify the human pass,
+ * grant the unwinder. Every step validates before the next unlocks:
+ * preset required, a passphrase-strength confirmation for the
+ * verification key, and the mechanics checkbox for the grant.
  */
 
-import { useState } from "react";
 import Link from "next/link";
+import { useState } from "react";
+import { ArrowRight, BadgeCheck, Fingerprint, ShieldCheck, Wallet } from "lucide-react";
 import {
-  ArrowRight,
-  BadgeCheck,
-  CircleDollarSign,
-  Fingerprint,
-  Wallet,
-} from "lucide-react";
-import { Badge, Button, Panel, RING } from "@/components/ui";
-import { demoActions, useBreakdown, useDemo } from "@/lib/demo";
-import { fiat, pct, ratio } from "@/lib/format";
-import { AUTONOMY_CAP_PCT, AUTONOMY_MAX_DRAWS, MAINT } from "@/lib/margin";
+  Badge,
+  Button,
+  ButtonLink,
+  Card,
+  CheckRow,
+  Field,
+  FOCUS,
+  Input,
+} from "@/components/ui";
+import { demoActions, effectiveCaps, useBreakdown, useDemo } from "@/lib/demo";
+import { fiat, ratio } from "@/lib/format";
+import { MAINT } from "@/lib/margin";
+import { PASSWORD_MIN, validatePassword } from "@/lib/session";
 
 const PRESETS = [
   {
     id: "operator",
     label: "Demo operator account",
     detail:
-      "tokenized equity 62,000 + v4 LP 38,500 + RWA equity 12,800 + treasury NAV 46,200 · debt 74,000 USDC",
+      "equity + v4 LP + restricted RWA + treasury NAV · debt $74,000 USDC · health 1.28x at rest",
   },
   {
     id: "fixture-a",
-    label: "fixture · strategy A (labelled fixture)",
-    detail:
-      "bureau demo preset — mixed classes, smaller debt; no live chain calls",
+    label: "Labelled fixture · strategy A",
+    detail: "Bureau seeded preset — mixed classes, smaller debt. No live chain calls.",
   },
   {
     id: "fixture-b",
-    label: "fixture · strategy B (labelled fixture)",
-    detail:
-      "bureau demo preset — equity + LP strategy only; no live chain calls",
+    label: "Labelled fixture · strategy B",
+    detail: "Bureau seeded preset — equity and LP only. No live chain calls.",
   },
 ] as const;
 
 export default function OnboardPage() {
-  const { connected, worldVerified, unwinderGranted, debt } = useDemo();
+  const demo = useDemo();
   const bd = useBreakdown();
-  const [preset, setPreset] = useState<string | null>(null);
-  const [acceptedMechanics, setAcceptedMechanics] = useState(false);
+  const caps = effectiveCaps(demo, bd);
 
-  const canVerify = connected && preset != null;
-  const canGrant = canVerify && worldVerified;
-  const complete = canGrant && unwinderGranted && acceptedMechanics;
+  const { connected, worldVerified, unwinderGranted, debt } = demo;
+  const [preset, setPreset] = useState<string | null>(null);
+  const [presetError, setPresetError] = useState<string | null>(null);
+  const [passphrase, setPassphrase] = useState("");
+  const [passError, setPassError] = useState<string | null>(null);
+  const [mechanics, setMechanics] = useState(false);
+  const [grantError, setGrantError] = useState<string | null>(null);
+
+  const passOk = validatePassword(passphrase) === null;
+  const canVerify = preset != null && passOk && !worldVerified;
+  const canGrant = worldVerified && mechanics && !unwinderGranted;
+
+  function handleStep1() {
+    if (preset == null) {
+      setPresetError("Choose an account preset before verifying");
+      return;
+    }
+    if (!connected) demoActions.connectWallet();
+  }
+
+  function handleVerify() {
+    if (preset == null) {
+      setPresetError("Choose an account preset before verifying");
+      return;
+    }
+    const err = validatePassword(passphrase);
+    if (err) {
+      setPassError(err);
+      return;
+    }
+    setPassError(null);
+    if (!connected) demoActions.connectWallet();
+    demoActions.verifyWorld();
+  }
+
+  function handleGrant() {
+    if (!worldVerified) return;
+    if (!mechanics) {
+      setGrantError("Confirm the mechanics before granting");
+      return;
+    }
+    setGrantError(null);
+    demoActions.grantUnwinder();
+  }
 
   return (
-    <div className="mx-auto flex max-w-[860px] flex-col gap-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Onboard</h1>
-        <p className="mt-0.5 text-[13px] text-muted-foreground">
-          one screen: connect, preset, verify, grant — the demo account uses
-          fixture data and performs no live chain calls
-        </p>
+    <div className="mx-auto flex max-w-[720px] flex-col gap-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Setup</h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            One screen, three checks: preset, human verification, unwinder
+            grant. Fixtures are labelled as fixtures — nothing pretends to be
+            live.
+          </p>
+        </div>
+        {unwinderGranted ? (
+          <Badge tone="positive">
+            <BadgeCheck className="size-3" aria-hidden="true" />
+            setup complete
+          </Badge>
+        ) : (
+          <Badge tone="neutral">{connected ? "step 2 of 3" : "step 1 of 3"}</Badge>
+        )}
       </div>
 
-      {/* step 1 — connect */}
-      <Panel
-        title="1 · Connect a wallet"
-        caption="a wallet holds the legs; the protocol never does (I1)"
-        right={connected ? <Badge tone="positive">connected</Badge> : undefined}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[13px]">Demo wallet · fixture account</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              The demo runs against a local Anvil fork of Base mainnet — no
-              custody transfers, borrowed liquidity stays an Aqua virtual
-              balance.
-            </p>
-          </div>
-          <Button tone="primary" onClick={() => demoActions.connectWallet()} disabled={connected}>
-            <Wallet className="size-3.5" aria-hidden="true" />
-            {connected ? "Connected" : "Connect"}
-          </Button>
-        </div>
-      </Panel>
-
-      {/* step 2 — preset */}
-      <Panel
-        title="2 · Select the account preset"
-        caption="fixtures are labelled as fixtures (BR6) — nothing pretends to be live"
-        right={preset ? <Badge tone="positive">selected</Badge> : undefined}
-      >
+      {/* step 1 — preset */}
+      <Card title="Step 1 · Connect and choose a preset" caption="the demo wallet holds the legs; the protocol never does (I1)">
         <fieldset className="flex flex-col gap-2">
           <legend className="sr-only">Account preset</legend>
           {PRESETS.map((p) => (
             <label
               key={p.id}
-              className={`flex cursor-pointer items-start gap-3 rounded-md border px-3 py-2.5 transition-colors duration-150 ${RING} ${
+              className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 transition-colors duration-150 ${FOCUS} ${
                 preset === p.id
-                  ? "border-primary/60 bg-primary/5"
-                  : "border-border bg-secondary/30 hover:bg-secondary/50"
+                  ? "border-primary/50 bg-primary/5"
+                  : "border-border hover:bg-secondary/40"
               } motion-reduce:transition-none`}
             >
               <input
@@ -105,151 +134,147 @@ export default function OnboardPage() {
                 name="preset"
                 value={p.id}
                 checked={preset === p.id}
-                onChange={() => setPreset(p.id)}
-                className="mt-0.5 accent-[var(--primary)]"
+                onChange={() => {
+                  setPreset(p.id);
+                  setPresetError(null);
+                }}
+                className="mt-1 accent-[var(--primary)]"
               />
               <span className="min-w-0">
                 <span className="block text-[13px] font-medium">{p.label}</span>
-                <span className="mt-0.5 block font-mono text-[11px] tabular-nums text-muted-foreground">
+                <span className="mt-0.5 block text-xs text-muted-foreground">
                   {p.detail}
                 </span>
               </span>
             </label>
           ))}
-        </fieldset>
-        {!connected && preset == null ? (
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            select a preset after connecting — verification verifies the
-            account owner
-          </p>
-        ) : null}
-      </Panel>
-
-      {/* step 3 — world */}
-      <Panel
-        title="3 · Verify with the World Agent Pass"
-        caption="required for autonomy step-ups; validated server-side (I7)"
-        right={
-          worldVerified ? <Badge tone="positive">verified</Badge> : undefined
-        }
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[13px]">Proof of humanity for the raise-cap paths</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Proofs are mocked in the World portal demo app — the demo never
-              treats a client-asserted result as authorization.
+          {presetError ? (
+            <p role="alert" className="text-xs text-destructive">
+              {presetError}
             </p>
-          </div>
-          <Button
-            tone="primary"
-            onClick={() => demoActions.verifyWorld()}
-            disabled={!canVerify || worldVerified}
-            title={!canVerify ? "Connect a wallet and select a preset first" : undefined}
-          >
-            <Fingerprint className="size-3.5" aria-hidden="true" />
-            {worldVerified ? "Verified" : "Verify"}
-          </Button>
-        </div>
-        {canVerify ? null : (
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            {connected
-              ? "select a preset to continue — verification proves the account owner"
-              : "connect a wallet, then select a preset"}
-          </p>
-        )}
-      </Panel>
-
-      {/* step 4 — unwinder */}
-      <Panel
-        title="4 · Grant the Unwinder"
-        caption="one approved operator — the only path that can unwind the account"
-        right={
-          unwinderGranted ? <Badge tone="positive">granted</Badge> : undefined
-        }
-      >
-        <label className="flex items-start gap-3 text-[13px]">
-          <input
-            type="checkbox"
-            checked={acceptedMechanics}
-            onChange={(e) => setAcceptedMechanics(e.target.checked)}
-            className="mt-0.5 accent-[var(--primary)]"
-          />
-          <span>
-            I understand the Unwinder nets the liquidatable legs atomically in
-            one transaction, and locked legs (&ldquo;earning but
-            locked&rdquo;) never back an unwind unless a human accepts that
-            risk.
-          </span>
-        </label>
+          ) : null}
+        </fieldset>
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-[11px] text-muted-foreground">
-            {!canGrant
-              ? "verify first — the grant follows verification"
-              : acceptedMechanics
-                ? "grant registers the unwinder on the account"
-                : "confirm the mechanics above to enable the grant"}
+          <p className="text-xs text-muted-foreground">
+            {connected
+              ? "demo wallet connected (fixture account)"
+              : "the demo wallet connects when you pick a preset"}
           </p>
+          <Wallet
+            className={`size-4 ${connected ? "text-positive" : "text-muted-foreground"}`}
+            aria-hidden="true"
+          />
+        </div>
+      </Card>
+
+      {/* step 2 — verify */}
+      <Card
+        title="Step 2 · Verify the human pass"
+        caption="Agent Pass validated server-side (I7) — proofs are mocked in the demo"
+        action={worldVerified ? <Badge tone="positive">verified</Badge> : undefined}
+      >
+        <div className="flex flex-col gap-3">
+          <Field
+            label="Confirmation passphrase"
+            htmlFor="verify-pass"
+            error={passError}
+            hint={`At least ${PASSWORD_MIN} characters — this validates the confirmation step without a live World proof.`}
+          >
+            <Input
+              id="verify-pass"
+              type="password"
+              autoComplete="off"
+              placeholder="••••••••"
+              value={passphrase}
+              invalid={passError != null}
+              aria-invalid={passError != null}
+              aria-describedby={passError ? "verify-pass-error" : undefined}
+              onChange={(e) => {
+                setPassphrase(e.target.value);
+                if (passError) setPassError(null);
+              }}
+            />
+          </Field>
           <Button
             tone="primary"
-            onClick={() => demoActions.grantUnwinder()}
-            disabled={!canGrant || unwinderGranted || !acceptedMechanics}
+            onClick={handleVerify}
+            disabled={worldVerified}
+            title={canVerify ? undefined : "Pick a preset and enter a valid passphrase first"}
           >
-            <CircleDollarSign className="size-3.5" aria-hidden="true" />
-            {unwinderGranted ? "Granted" : "Grant"}
+            <Fingerprint className="size-4" aria-hidden="true" />
+            Verify with the Agent Pass
           </Button>
         </div>
-      </Panel>
+      </Card>
 
-      {/* granted caps */}
-      <Panel
-        title={`Granted caps${complete ? "" : " · partial (preview — computed from fixture inputs)"}`}
-        caption="what this account may draw, per §4.2 defaults"
-        right={<Badge tone="primary">health {ratio(bd.health)}</Badge>}
+      {/* step 3 — grant */}
+      <Card
+        title="Step 3 · Grant the unwinder"
+        caption="one registered operator — the only path that can unwind the account"
+        action={unwinderGranted ? <Badge tone="positive">granted</Badge> : undefined}
       >
-        <div className="grid grid-cols-2 gap-x-6 gap-y-2 font-mono text-[12px] tabular-nums md:grid-cols-4">
-          <div>
-            <p className="text-[11px] text-muted-foreground">per-draw cap</p>
-            <p>{fiat(bd.perDrawCap, "detailed")}</p>
-          </div>
-          <div>
-            <p className="text-[11px] text-muted-foreground">draws / 12 h</p>
-            <p>{AUTONOMY_MAX_DRAWS}</p>
-          </div>
-          <div>
-            <p className="text-[11px] text-muted-foreground">maintenance</p>
-            <p>{ratio(MAINT)}</p>
-          </div>
-          <div>
-            <p className="text-[11px] text-muted-foreground">borrowing power</p>
-            <p>{fiat(bd.bp, "detailed")}</p>
-          </div>
+        <div className="flex flex-col gap-3">
+          <CheckRow checked={mechanics} onChange={setMechanics}>
+            I understand the unwinder nets the liquidatable legs atomically, and
+            locked assets never back an unwind unless a verified human accepts
+            that risk.
+          </CheckRow>
+          {grantError ? (
+            <p role="alert" className="text-xs text-destructive">
+              {grantError}
+            </p>
+          ) : null}
+          <Button tone="primary" onClick={handleGrant} disabled={worldVerified ? !mechanics || unwinderGranted : true}>
+            Grant the unwinder
+          </Button>
         </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          autonomy caps are {pct(AUTONOMY_CAP_PCT * 100, { decimals: 0 })} of BP
-          per draw · raising either cap requires an accepted Agent Pass · debt
-          may never exceed BP (I2)
-        </p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Link
-            href="/"
-            className={`inline-flex h-8 items-center gap-1.5 rounded-md border border-primary bg-primary px-3 text-[13px] font-medium text-primary-foreground transition-colors duration-150 outline-offset-2 outline-0 outline-ring focus-visible:outline-2 hover:bg-primary/90 motion-reduce:transition-none`}
-          >
-            Open the credit desk
+      </Card>
+
+      {/* caps summary */}
+      <Card
+        title="Granted caps"
+        caption="what this account may draw — §4.2 defaults, computed from the preset"
+        action={<Badge tone="primary">health {ratio(bd.health)}</Badge>}
+      >
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-[13px] sm:grid-cols-4">
+          <div>
+            <dt className="text-xs text-muted-foreground">per-draw cap</dt>
+            <dd className="mt-0.5 font-mono tabular-nums">{fiat(caps.perDrawCap, "detailed")}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">draws / 12 h</dt>
+            <dd className="mt-0.5 font-mono tabular-nums">{caps.drawsPerWindow}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">maintenance</dt>
+            <dd className="mt-0.5 font-mono tabular-nums">{ratio(MAINT)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">borrowing power</dt>
+            <dd className="mt-0.5 font-mono tabular-nums">{fiat(bd.bp, "detailed")}</dd>
+          </div>
+        </dl>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <ButtonLink href="/" tone="primary">
+            Open the dashboard
             <ArrowRight className="size-3.5" aria-hidden="true" />
-          </Link>
+          </ButtonLink>
           <Link
             href="/agent"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-secondary px-3 text-[13px] font-medium text-secondary-foreground transition-colors duration-150 outline-offset-2 outline-0 outline-ring focus-visible:outline-2 hover:bg-secondary/80 motion-reduce:transition-none"
+            className={`text-xs font-medium text-primary outline-offset-2 outline-0 outline-ring focus-visible:outline-2 hover:underline underline-offset-2 motion-reduce:transition-none ${FOCUS}`}
           >
-            <BadgeCheck className="size-3.5" aria-hidden="true" />
-            Configure the agent
+            or go straight to agent runs
           </Link>
           <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
             preset debt {fiat(debt, "detailed")}
           </span>
         </div>
-      </Panel>
+        <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <ShieldCheck className="size-3.5 shrink-0" aria-hidden="true" />
+          drawn liquidity stays an Aqua virtual balance — your assets never move
+          to the protocol.
+        </p>
+      </Card>
     </div>
   );
 }
