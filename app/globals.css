@@ -59,9 +59,9 @@
 
   .dark {
     /* Dark mode — Cobalt Grid (primary mode for the desk) */
-    --background: oklch(0.130 0.022 250);
+    --background: oklch(0.125 0.020 250);
     --foreground: oklch(0.970 0.010 250);
-    --card: oklch(0.180 0.028 250);
+    --card: oklch(0.170 0.026 250);
     --card-foreground: oklch(0.970 0.010 250);
     --popover: oklch(0.200 0.028 250);
     --popover-foreground: oklch(0.970 0.010 250);
@@ -69,7 +69,7 @@
     --primary-foreground: oklch(0.100 0.000 0);
     --secondary: oklch(0.220 0.038 250);
     --secondary-foreground: oklch(0.970 0.010 250);
-    --muted: oklch(0.200 0.028 250);
+    --muted: oklch(0.195 0.026 250);
     --muted-foreground: oklch(0.670 0.010 250);
     --accent: oklch(0.240 0.038 250);
     --accent-foreground: oklch(0.970 0.010 250);
@@ -77,10 +77,10 @@
     --destructive-foreground: oklch(0.980 0.000 0);
     --positive: oklch(0.780 0.170 152);
     --warning: oklch(0.800 0.130 85);
-    --border: oklch(0.310 0.038 250);
+    --border: oklch(0.285 0.032 250);
     --input: oklch(0.180 0.028 250);
     --ring: oklch(0.760 0.190 250);
-    --radius: 0.375rem;
+    --radius: 0.5rem;
   }
 
   body {
