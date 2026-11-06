@@ -1,99 +1,175 @@
 "use client";
 
 /**
- * App chrome — Workstation Dense: single top bar, tab nav, persistent
- * non-custodial badge, fixture status strip, beat toast (auto-dismiss
- * 7s, manual dismiss, reduced-motion honored).
+ * App shell — Quiet Pro.
+ * Sidebar navigation (desktop) with a slim top bar on phones, a session
+ * gate that sends signed-out visitors to /login, and the beat toast
+ * parked bottom-right. /login renders outside the chrome (own layout).
  */
 
 import { useEffect, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ShieldCheck, Wallet, Waypoints, X } from "lucide-react";
-import { NavTab } from "@/components/ui";
-import { demoActions, useDemo, useBreakdown, FEED, NOW } from "@/lib/demo";
-import { fiat, ratio, utcClock, duration } from "@/lib/format";
+import {
+  FlaskConical,
+  LayoutDashboard,
+  ListChecks,
+  ShieldCheck,
+  SignOut,
+  SquareUser,
+  Waypoints,
+  X,
+} from "lucide-react";
+import { SidebarLink, FOCUS } from "@/components/ui";
+import { sessionActions, useSession } from "@/lib/session";
+import { demoActions, useDemo, useBreakdown } from "@/lib/demo";
+import { fiat, ratio } from "@/lib/format";
 
-const TABS = [
-  { href: "/", label: "Credit Desk" },
-  { href: "/stress", label: "Stress" },
-  { href: "/agent", label: "Agent" },
+const NAV = [
+  { href: "/", label: "Overview", icon: <LayoutDashboard className="size-4" /> },
+  { href: "/positions", label: "Positions", icon: <ListChecks className="size-4" /> },
+  { href: "/stress", label: "Stress tests", icon: <FlaskConical className="size-4" /> },
+  { href: "/agent", label: "Agent runs", icon: <Waypoints className="size-4" /> },
 ];
 
-export function AppChrome({ children }: { children: ReactNode }) {
+export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { beat, debt } = useDemo();
-  const bd = useBreakdown();
+  const router = useRouter();
+  const session = useSession();
+  const { beat } = useDemo();
 
-  // auto-dismiss beats after 7s (keyed per beat id)
+  // login page renders outside the chrome
+  if (pathname === "/login") return <>{children}</>;
+
+  // session gate → /login
+  const authed = session.status === "signed-in";
+  const wantsIn = pathname !== "/login";
+
   useEffect(() => {
-    if (!beat) return;
-    const t = setTimeout(() => demoActions.dismissBeat(), 7_000);
-    return () => clearTimeout(t);
-  }, [beat]);
+    if (!authed && wantsIn) {
+      router.replace("/login");
+    }
+  }, [authed, wantsIn, router]);
+
+  if (!authed) {
+    return (
+      <div className="flex min-h-full flex-col items-center justify-center gap-2 px-6 text-center">
+        <p className="text-sm text-muted-foreground">Taking you to sign in…</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex min-h-full flex-col bg-background text-foreground">
-      {/* top bar */}
-      <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-11 max-w-[1400px] items-center gap-2 px-4 sm:gap-4">
+    <div className="flex min-h-full">
+      {/* sidebar (≥lg) */}
+      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-card/50 lg:flex">
+        <div className="flex items-center gap-2.5 px-5 pb-5 pt-6">
           <Link
             href="/"
-            className="flex items-center gap-2 rounded-md outline-offset-4 outline-0 outline-ring focus-visible:outline-2 motion-reduce:transition-none"
+            className={`flex items-center gap-2 rounded-md ${FOCUS}`}
           >
-            <Waypoints className="size-4 text-primary" aria-hidden="true" />
-            <span className="text-[13px] font-semibold tracking-tight hidden sm:inline">
-              CashflowHook
-            </span>
-            <span className="text-[11px] text-muted-foreground hidden md:inline">
-              credit desk
+            <Waypoints className="size-5 text-primary" aria-hidden="true" />
+            <span className="flex flex-col">
+              <span className="text-sm font-semibold leading-4 tracking-tight">
+                CashflowHook
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                credit line studio
+              </span>
             </span>
           </Link>
+        </div>
 
-          <nav aria-label="product" className="flex items-center gap-1">
-            {TABS.map((t) => (
-              <NavTab key={t.href} href={t.href} active={pathname === t.href}>
-                {t.label}
-              </NavTab>
-            ))}
-          </nav>
+        <nav aria-label="product" className="flex flex-1 flex-col gap-0.5 px-3">
+          {NAV.map((t) => (
+            <SidebarLink
+              key={t.href}
+              href={t.href}
+              active={pathname === t.href}
+              icon={t.icon}
+            >
+              {t.label}
+            </SidebarLink>
+          ))}
+          <div className="my-3 border-t border-border" aria-hidden="true" />
+          <SidebarLink
+            href="/onboard"
+            active={pathname === "/onboard"}
+            icon={<SquareUser className="size-4" />}
+          >
+            Setup
+          </SidebarLink>
+        </nav>
 
-          <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-            {/* persistent badge (§6.8 copy rule) — full text on ≥sm,
-                icon-only at phone widths with the text kept for readers */}
+        <div className="flex flex-col gap-2.5 border-t border-border px-4 py-4">
+          {/* persistent non-custodial badge (§6.8 copy rule) */}
+          <span className="flex items-center gap-1.5 text-[11px] leading-4 text-primary">
+            <ShieldCheck className="size-3.5 shrink-0" aria-hidden="true" />
+            Non-custodial · Aqua virtual balance
+          </span>
+          <div className="flex items-center justify-between gap-2">
             <span
-              title="Non-custodial — borrowed liquidity lives as an Aqua virtual balance; your tokens never move to the protocol"
-              className="inline-flex items-center gap-1 whitespace-nowrap rounded border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary"
+              className="truncate text-xs text-muted-foreground"
+              title={session.email ?? undefined}
             >
-              <ShieldCheck className="size-3" aria-hidden="true" />
-              <span className="hidden sm:inline">
-                Non-custodial · Aqua virtual balance
-              </span>
-              <span className="sr-only sm:hidden">
-                Non-custodial · Aqua virtual balance
-              </span>
+              {session.email}
             </span>
-            <Link
-              href="/onboard"
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded border border-border bg-secondary px-1.5 py-0.5 text-[11px] text-secondary-foreground transition-colors duration-150 hover:bg-secondary/80 outline-offset-2 outline-0 outline-ring focus-visible:outline-2 motion-reduce:transition-none"
+            <button
+              type="button"
+              onClick={() => sessionActions.signOut()}
+              aria-label="Sign out"
+              className={`flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-foreground ${FOCUS}`}
             >
-              <Wallet className="size-3" aria-hidden="true" />
-              <span className="hidden md:inline">demo account ·</span> fixture
-            </Link>
+              <SignOut className="size-3.5" aria-hidden="true" />
+              Sign out
+            </button>
           </div>
         </div>
-      </header>
+      </aside>
 
-      {/* beat toast */}
+      {/* main column */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* mobile header (<lg) */}
+        <header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur lg:hidden">
+          <Link href="/" className={`flex items-center gap-2 ${FOCUS}`}>
+            <Waypoints className="size-4 text-primary" aria-hidden="true" />
+            <span className="text-[13px] font-semibold tracking-tight">
+              CashflowHook
+            </span>
+          </Link>
+          <nav aria-label="product" className="ml-auto flex items-center gap-1">
+            {NAV.map((t) => (
+              <SidebarLink key={t.href} href={t.href} active={pathname === t.href} icon={t.icon}>
+                <span className="sr-only sm:not-sr-only">{t.label}</span>
+              </SidebarLink>
+            ))}
+          </nav>
+        </header>
+
+        <SessionNote email={session.email} />
+
+        <main className="mx-auto w-full max-w-[1120px] flex-1 px-4 py-6 sm:px-6 lg:py-8">
+          {children}
+        </main>
+
+        <footer className="px-6 pb-6">
+          <p className="mx-auto max-w-[1120px] text-[11px] text-muted-foreground">
+            Demo fixtures, disclosed. Local Anvil fork of Base mainnet · OUSG/USDY
+            NAV read from Ethereum mainnet (view calls only) · no live chain calls.
+          </p>
+        </footer>
+      </div>
+
+      {/* beat toast — bottom right, functional entrance */}
       {beat ? (
         <div
           role="status"
-          className="fixed inset-x-0 top-14 z-50 flex justify-center px-4"
+          className="fixed bottom-4 right-4 z-50 flex w-[calc(100%-2rem)] max-w-md"
         >
           <div
-            className={`beat-toast flex max-w-xl items-start gap-3 rounded-md border px-3 py-2 shadow-lg backdrop-blur ${
+            className={`beat-toast flex w-full items-start gap-3 rounded-lg border px-4 py-3 shadow-lg backdrop-blur ${
               beat.tone === "destructive"
-                ? "border-destructive/50 bg-destructive/10 text-foreground"
+                ? "border-destructive/50 bg-destructive/10"
                 : beat.tone === "warning"
                   ? "border-warning/50 bg-warning/10"
                   : beat.tone === "positive"
@@ -103,47 +179,34 @@ export function AppChrome({ children }: { children: ReactNode }) {
           >
             <div className="min-w-0">
               <p className="text-[13px] font-medium">{beat.title}</p>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {beat.body}
-              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{beat.body}</p>
             </div>
             <button
               type="button"
               onClick={() => demoActions.dismissBeat()}
               aria-label="Dismiss notification"
-              className="shrink-0 rounded p-1.5 text-muted-foreground transition-colors duration-150 hover:text-foreground outline-offset-2 outline-0 outline-ring focus-visible:outline-2 motion-reduce:transition-none"
+              className={`shrink-0 rounded-md p-1 text-muted-foreground transition-colors duration-150 hover:text-foreground ${FOCUS}`}
             >
-              <X className="size-3.5" aria-hidden="true" />
+              <X className="size-4" aria-hidden="true" />
             </button>
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
 
-      <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-5">
-        {children}
-      </main>
-
-      {/* status strip */}
-      <footer className="border-t border-border bg-card/40">
-        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-5 gap-y-0.5 px-4 py-2 font-mono text-[11px] tabular-nums text-muted-foreground">
-          <span>
-            health {ratio(bd.health)} · debt{" "}
-            {fiat(debt)}
-            {bd.stressed
-              ? " · STRESSED — unwind eligible"
-              : " · within maintenance"}
-          </span>
-          <span>
-            ST/LP mark {utcClock(FEED.stockMarkTs)} (1800 s limit) · NAV{" "}
-            {utcClock(FEED.navTs)} (26 h limit) · held {duration(NOW - FEED.lastAccrualTs)}
-          </span>
-          <span>
-            fixture feed — local Anvil fork of Base mainnet · OUSG/USDY NAV read
-            from Ethereum mainnet (view calls only)
-          </span>
-          <span className="ml-auto">09:00 UTC · fixture</span>
-        </div>
-      </footer>
+function SessionNote({ email }: { email: string | null }) {
+  const bd = useBreakdown();
+  const { debt } = useDemo();
+  return (
+    <div className="hidden items-center justify-between gap-4 border-b border-border px-6 py-3 lg:flex">
+      <p className="text-xs text-muted-foreground">
+        signed in as <span className="text-foreground">{email}</span>
+      </p>
+      <p className="font-mono text-xs tabular-nums text-muted-foreground">
+        health {ratio(bd.health)} · debt {fiat(debt)}
+      </p>
     </div>
   );
 }
