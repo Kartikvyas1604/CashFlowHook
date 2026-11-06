@@ -39,4 +39,4 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-agent/
+/agent/  # root-only: project spec dir (was silently matching app/agent/)
