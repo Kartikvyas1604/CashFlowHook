@@ -1,26 +1,33 @@
 "use client";
 
 /**
- * Stress tab (§6.8 screen 3): the 16-scenario grid as a heat strip with
- * scenario inputs on hover/focus, the crash-replay comparator
- * (Aug 2024 / Feb 2025 / Oct 2026) printing per-scenario losses, and the
- * identical-book isolated-account liquidation comparison.
+ * Stress tests (§6.8 screen 3, Quiet Pro presentation).
+ * The 16-scenario grid keeps its contrast-validated ramp (computed, not
+ * guessed — see globals.css) and its keyboard nav. Inputs for the
+ * selected scenario render in a compact definition list; the crash
+ * replay compares the identical book under isolated liquidation.
  */
 
 import { useState } from "react";
-import { Activity, DoorClosed, DoorOpen, Play, RotateCcw } from "lucide-react";
-import { Badge, Button, Panel, Td, Th } from "@/components/ui";
-import { CRASH_REPLAYS, LEGS_FIXTURE, demoActions, useBreakdown, useDemo } from "@/lib/demo";
-import { fiat, pct, ratio, num } from "@/lib/format";
+import { Play, RotateCcw } from "lucide-react";
+import { Badge, Button, Card, Td, Th } from "@/components/ui";
 import {
+  CRASH_REPLAYS,
+  LEGS_FIXTURE,
+  demoActions,
+  useBreakdown,
+  useDemo,
+} from "@/lib/demo";
+import { fiat, num, pct, ratio } from "@/lib/format";
+import {
+  GAP_PREMIUM,
   HC_LP,
   HC_R1,
   HC_R2,
   HC_STOCK,
-  VOL_STATES,
-  SHOCKS,
-  GAP_PREMIUM,
   PERM_LIQ_HC,
+  SHOCKS,
+  VOL_STATES,
   lossLP,
   lossStock,
 } from "@/lib/margin";
@@ -28,7 +35,7 @@ import {
 export default function StressPage() {
   const bd = useBreakdown();
   const { gateOpen, r1TransferRestricted, debt } = useDemo();
-  const [selected, setSelected] = useState<number>(0); // scenario index s
+  const [selected, setSelected] = useState(0); // s = i·2 + j
   const [replayRan, setReplayRan] = useState(false);
 
   const stockUsd = LEGS_FIXTURE.stock.amountUsd;
@@ -39,270 +46,219 @@ export default function StressPage() {
   const sel = bd.scenarios[selected];
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Stress</h1>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">
-            one grid prices all three legs — 8 shocks × 2 vol states, plus the
-            closed-form RWA stress terms
+          <h1 className="text-xl font-semibold tracking-tight">Stress tests</h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            Eight price shocks across two volatility states price all three
+            collateral classes together. Fee credit halves under negative
+            shocks.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge tone="neutral">IM {fiat(bd.im, "detailed")}</Badge>
-          <Badge tone="primary">fee credit halves on negative shocks</Badge>
-        </div>
+        <Badge tone="neutral">
+          worst-case IM {fiat(bd.im, "detailed")}
+        </Badge>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-12">
-        <div className="flex flex-col gap-4 xl:col-span-8">
-          {/* heat strip */}
-          <Panel
-            title="Scenario grid"
-            caption="loss IM per cell · select a cell for its inputs"
-            right={
-              <Badge tone="warning">
-                worst {fiat(bd.im, "detailed")} at sh {num(bd.worstScenario.sh, 2)}
-              </Badge>
-            }
-          >
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] border-separate border-spacing-1">
-                <caption className="sr-only">
-                  16-scenario stress grid; rows are vol states, columns are
-                  price shocks; each cell shows the initial margin loss
-                </caption>
-                <thead>
-                  <tr>
-                    <Th>VOL ↓ · shock →</Th>
-                    {SHOCKS.map((sh) => (
-                      <Th key={sh} numeric>
-                        {pct(sh * 100, { decimals: 0 })}
-                      </Th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {VOL_STATES.map((vol, j) => (
-                    <tr key={vol}>
-                      <Td mono>
-                        ×{num(vol, 1)} vol
-                      </Td>
-                      {SHOCKS.map((sh, i) => {
-                        const s = i * 2 + j;
-                        const cell = bd.scenarios[s];
-                        if (!cell) return null;
-                        const intensity =
-                          bd.im > 0
-                            ? Math.min(1, cell.lossIM / bd.im)
-                            : 0;
-                        const worst = s === bd.worstScenario.s;
-                        // alpha ramp 8..70 → bucket classes (skip the
-                        // 32–44% contrast dead zone; see globals.css)
-                        const alpha = 8 + intensity * 62;
-                        const bucket =
-                          alpha >= 62
-                            ? "heat-a6"
-                            : alpha >= 50
-                              ? "heat-a5"
-                              : alpha >= 38
-                                ? "heat-a4"
-                                : alpha >= 28
-                                  ? "heat-a3"
-                                  : alpha >= 20
-                                    ? "heat-a2"
-                                    : alpha >= 12
-                                      ? "heat-a1"
-                                      : "heat-a0";
-                        return (
-                          <td key={s} className="p-0">
-                            <button
-                              type="button"
-                              onClick={() => setSelected(s)}
-                              onKeyDown={(e) => {
-                                const grid = { i, j };
-                                if (e.key === "ArrowRight") {
-                                  setSelected(Math.min(7, grid.i + 1) * 2 + grid.j);
-                                  e.preventDefault();
-                                } else if (e.key === "ArrowLeft") {
-                                  setSelected(Math.max(0, grid.i - 1) * 2 + grid.j);
-                                  e.preventDefault();
-                                } else if (e.key === "ArrowDown") {
-                                  setSelected(grid.i * 2 + Math.min(1, grid.j + 1));
-                                  e.preventDefault();
-                                } else if (e.key === "ArrowUp") {
-                                  setSelected(grid.i * 2 + Math.max(0, grid.j - 1));
-                                  e.preventDefault();
-                                }
-                              }}
-                              aria-label={`Scenario ${s}: shock ${pct(
-                                cell.sh * 100,
-                                { decimals: 0 }
-                              )} at ${num(vol, 1)} vol — loss ${fiat(
-                                cell.lossIM
-                              )}`}
-                              aria-pressed={selected === s}
-                              title={`sh ${pct(cell.sh * 100, { decimals: 0 })} · loss ${fiat(
-                                cell.lossIM
-                              )}`}
-                              className={`w-full min-h-9 rounded-sm px-2 py-2 text-right font-mono text-[11.5px] tabular-nums transition-shadow duration-150 motion-reduce:transition-none outline-offset-2 outline-0 outline-ring focus-visible:outline-2 hover:outline-1 ${
-                                worst
-                                  ? "bg-destructive text-destructive-foreground ring-1 ring-destructive/60"
-                                  : `${bucket} ${selected === s ? "ring-1 ring-ring" : ""}`
-                              }`}
-                            >
-                              {fiat(cell.lossIM)}
-                            </button>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Panel>
-
-          {/* selected scenario inputs */}
-          <Panel
-            title="Scenario inputs"
-            caption="all terms visible — every displayed number is computed here"
-            right={
-              <Badge tone="neutral">
-                s = i·2 + j → {sel.i}·2 + {sel.j} = {sel.s}
-              </Badge>
-            }
-          >
-            {sel ? (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px]">
-                  <thead>
-                    <tr>
-                      <Th>Term</Th>
-                      <Th numeric>Value</Th>
-                      <Th>Definition (§4.3)</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <Td>scaled shock sh</Td>
-                      <Td numeric>{pct(sel.sh * 100, { decimals: 1 })}</Td>
-                      <Td className="text-muted-foreground">
-                        sh = S[{sel.i}]·V[{sel.j}] ={" "}
-                        {pct(SHOCKS[sel.i] * 100, { decimals: 0 })} × {num(VOL_STATES[sel.j], 1)}
-                      </Td>
-                    </tr>
-                    <tr>
-                      <Td>lossStock</Td>
-                      <Td numeric>{fiat(sel.lossStock, "detailed")}</Td>
-                      <Td className="text-muted-foreground">
-                        max(0, −sh) · stockLegUsd
-                      </Td>
-                    </tr>
-                    <tr>
-                      <Td>lossLP</Td>
-                      <Td numeric>{fiat(sel.lossLP, "detailed")}</Td>
-                      <Td className="text-muted-foreground">
-                        lpLegUsd · (0.8·|sh| + 0.05·sh²) = {num(0.8 * Math.abs(sel.sh) + 0.05 * sel.sh * sel.sh, 4)}
-                      </Td>
-                    </tr>
-                    <tr>
-                      <Td>lossR1 (× vol)</Td>
-                      <Td numeric>{fiat(sel.lossR1 * sel.vol, "detailed")}</Td>
-                      <Td className="text-muted-foreground">
-                        equityRwaUsd · 0.20 · (1 + {num(GAP_PREMIUM, 1)} gap premium) ={" "}
-                        {fiat(sel.lossR1, "detailed")} · vol {num(sel.vol, 1)}
-                      </Td>
-                    </tr>
-                    <tr>
-                      <Td>lossR2</Td>
-                      <Td numeric>{fiat(sel.lossR2, "detailed")}</Td>
-                      <Td className="text-muted-foreground">
-                        navUsd · {pct(PERM_LIQ_HC * 100, { decimals: 1 })} permissioned-liquidity
-                        haircut + exit cost (≤ coupon × 2 gate days)
-                      </Td>
-                    </tr>
-                    <tr>
-                      <Td>fee credit applied</Td>
-                      <Td numeric>−{fiat(sel.feeCreditApplied, "detailed")}</Td>
-                      <Td className="text-muted-foreground">
-                        feeCreditBase × {sel.feeCreditApplied < bd.feeCreditBase ? 0.5 : 1.0} (shock {sel.sh < 0 ? "<" : "≥"} 0)
-                      </Td>
-                    </tr>
-                    <tr className="bg-secondary/40">
-                      <Td mono>IM</Td>
-                      <Td numeric>{fiat(sel.lossIM, "detailed")}</Td>
-                      <Td className="text-muted-foreground">
-                        max(0, lossStock + lossLP + lossR1·V + lossR2 − feeCred)
-                      </Td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            ) : null}
-          </Panel>
+      <Card
+        title="Scenario grid"
+        caption="initial margin loss per cell · select a cell, or use arrow keys"
+        action={
+          <Badge tone="destructive" title={`at sh ${pct(bd.worstScenario.sh * 100, { decimals: 0 })} vol ×${num(bd.worstScenario.vol, 1)}`}>
+            worst {fiat(bd.im)}
+          </Badge>
+        }
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[680px] border-separate border-spacing-1">
+            <caption className="sr-only">
+              16-scenario stress grid; rows are volatility states, columns are
+              price shocks; each cell shows the initial margin loss
+            </caption>
+            <thead>
+              <tr>
+                <Th>vol ↓ · shock →</Th>
+                {SHOCKS.map((sh) => (
+                  <Th key={sh} numeric>
+                    {pct(sh * 100, { decimals: 0 })}
+                  </Th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {VOL_STATES.map((vol, j) => (
+                <tr key={vol}>
+                  <Td>×{num(vol, 1)}</Td>
+                  {SHOCKS.map((_, i) => {
+                    const s = i * 2 + j;
+                    const cell = bd.scenarios[s];
+                    if (!cell) return null;
+                    const intensity =
+                      bd.im > 0 ? Math.min(1, cell.lossIM / bd.im) : 0;
+                    const worst = s === bd.worstScenario.s;
+                    const alpha = 8 + intensity * 62;
+                    const bucket =
+                      alpha >= 62
+                        ? "heat-a6"
+                        : alpha >= 50
+                          ? "heat-a5"
+                          : alpha >= 38
+                            ? "heat-a4"
+                            : alpha >= 28
+                              ? "heat-a3"
+                              : alpha >= 20
+                                ? "heat-a2"
+                                : alpha >= 12
+                                  ? "heat-a1"
+                                  : "heat-a0";
+                    return (
+                      <td key={s} className="p-0">
+                        <button
+                          type="button"
+                          onClick={() => setSelected(s)}
+                          onKeyDown={(e) => {
+                            if (e.key === "ArrowRight") {
+                              setSelected(Math.min(7, i + 1) * 2 + j);
+                              e.preventDefault();
+                            } else if (e.key === "ArrowLeft") {
+                              setSelected(Math.max(0, i - 1) * 2 + j);
+                              e.preventDefault();
+                            } else if (e.key === "ArrowDown") {
+                              setSelected(i * 2 + Math.min(1, j + 1));
+                              e.preventDefault();
+                            } else if (e.key === "ArrowUp") {
+                              setSelected(i * 2 + Math.max(0, j - 1));
+                              e.preventDefault();
+                            }
+                          }}
+                          aria-label={`Scenario ${s}: shock ${pct(cell.sh * 100, { decimals: 0 })} at ×${num(vol, 1)} vol — loss ${fiat(cell.lossIM)}`}
+                          aria-pressed={selected === s}
+                          title={`sh ${pct(cell.sh * 100, { decimals: 0 })} · loss ${fiat(cell.lossIM)}`}
+                          className={`w-full min-h-9 rounded-md px-2 py-2 text-right font-mono text-xs tabular-nums transition-shadow duration-150 motion-reduce:transition-none outline-offset-2 outline-0 outline-ring focus-visible:outline-2 hover:outline-1 ${
+                            worst
+                              ? "bg-destructive text-destructive-foreground ring-1 ring-destructive/60"
+                              : `${bucket} ${selected === s ? "ring-1 ring-ring" : ""}`
+                          }`}
+                        >
+                          {fiat(cell.lossIM)}
+                        </button>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+      </Card>
 
-        {/* crash control + replay */}
-        <div className="flex flex-col gap-4 xl:col-span-4">
-          <Panel
-            title="Crash control (demo)"
-            caption="drives CreditEngine events — every beat discloses what changed"
-          >
-            <div className="flex flex-col gap-2">
-              <Button
-                tone="destructive"
-                onClick={() => demoActions.gateShut()}
-                disabled={!gateOpen}
-                title="NAV oracle posts gateOpen=false → SegregationChanged"
-              >
-                <DoorClosed className="size-3.5" aria-hidden="true" />
-                Shut the redemption gate
-              </Button>
-              <Button
-                onClick={() => demoActions.gateOpen()}
-                disabled={gateOpen}
-                title="Gate reopens → margin re-included in the same block"
-              >
-                <DoorOpen className="size-3.5" aria-hidden="true" />
-                Reopen the gate
-              </Button>
-              <p className="text-[11px] text-muted-foreground">
-                current flags: R1 transfer-restricted ={" "}
-                {r1TransferRestricted ? "true" : "false"} · R2 gate open ={" "}
-                {gateOpen ? "true" : "false"} · unwindableNow{" "}
-                {fiat(bd.unwindableNow, "detailed")}
-              </p>
-            </div>
-          </Panel>
+      <div className="grid items-start gap-5 lg:grid-cols-2">
+        <Card
+          title="Selected scenario"
+          caption="every term visible — computed, not quoted from a slide"
+          action={
+            <Badge tone="neutral">
+              s = {sel.i}·2 + {sel.j}
+            </Badge>
+          }
+        >
+          {sel ? (
+            <dl className="flex flex-col">
+              {[
+                {
+                  term: "scaled shock",
+                  value: pct(sel.sh * 100, { decimals: 1 }),
+                  note: `sh = ${pct(SHOCKS[sel.i] * 100, { decimals: 0 })} × vol ${num(volState(sel.j), 1)}`,
+                },
+                {
+                  term: "lossStock",
+                  value: fiat(sel.lossStock, "detailed"),
+                  note: "max(0, −sh) · stockLegUsd",
+                },
+                {
+                  term: "lossLP",
+                  value: fiat(sel.lossLP, "detailed"),
+                  note: `lpLegUsd · (${num(0.8 * Math.abs(sel.sh) + 0.05 * sel.sh * sel.sh, 4)}) beta × |sh| + convexity × sh²`,
+                },
+                {
+                  term: "lossR1 × vol",
+                  value: fiat(sel.lossR1 * sel.vol, "detailed"),
+                  note: `equity · 0.20 · (1 + ${num(GAP_PREMIUM, 1)} gap premium)`,
+                },
+                {
+                  term: "lossR2",
+                  value: fiat(sel.lossR2, "detailed"),
+                  note: `${pct(PERM_LIQ_HC * 100, { decimals: 1 })} perm-liq haircut + exit cost`,
+                },
+                {
+                  term: "fee credit",
+                  value: `−${fiat(sel.feeCreditApplied, "detailed")}`,
+                  note: "halved under negative shocks (§4.3)",
+                },
+                {
+                  term: "IM",
+                  value: fiat(sel.lossIM, "detailed"),
+                  note: "the grid's initial margin requirement for this cell",
+                },
+              ].map((row, idx, rows) => (
+                <div
+                  key={row.term}
+                  className={`flex items-baseline justify-between gap-4 py-2.5 ${
+                    idx < rows.length - 1 ? "border-b border-border/50" : ""
+                  } ${row.term === "IM" ? "items-baseline" : ""}`}
+                >
+                  <dt className="min-w-0">
+                    <span
+                      className={`block text-[13px] ${row.term === "IM" ? "font-semibold" : ""}`}
+                    >
+                      {row.term}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      {row.note}
+                    </span>
+                  </dt>
+                  <dd
+                    className={`shrink-0 font-mono tabular-nums text-[13px] ${
+                      row.term === "IM" ? "text-base font-semibold" : ""
+                    }`}
+                  >
+                    {row.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+        </Card>
 
-          <Panel
+        <div className="flex flex-col gap-5">
+          <Card
             title="Crash replay"
-            caption="identical book · cross-margin vs isolated liquidation (F12)"
-            right={
+            caption="identical book · isolated liquidation vs cross-margin (F12)"
+            action={
               <Button
                 size="sm"
                 tone={replayRan ? "secondary" : "primary"}
                 onClick={() => setReplayRan(true)}
-                title="Run the replay against the fixture crash timeline"
               >
                 {replayRan ? (
-                  <RotateCcw className="size-3" aria-hidden="true" />
+                  <RotateCcw className="size-3.5" aria-hidden="true" />
                 ) : (
-                  <Play className="size-3" aria-hidden="true" />
+                  <Play className="size-3.5" aria-hidden="true" />
                 )}
                 {replayRan ? "Rerun" : "Run replay"}
               </Button>
             }
           >
             {!replayRan ? (
-              <p className="flex items-center gap-2 text-[12px] text-muted-foreground">
-                <Activity className="size-3.5 shrink-0" aria-hidden="true" />
-                Runs the three historical crash paths (fixture replay inputs)
-                against this account&apos;s live grid state.
+              <p className="text-[13px] leading-6 text-muted-foreground">
+                Runs three historical crash paths (disclosed fixture replay
+                inputs) against this account&apos;s live grid state, and shows
+                what the same collateral would look like under isolated,
+                per-class liquidation.
               </p>
             ) : (
-              <ul className="flex flex-col gap-2">
+              <ul className="flex flex-col gap-3">
                 {CRASH_REPLAYS.map((crash) => {
                   const sh = crash.peakShock * crash.vol;
                   const abs = Math.abs(sh);
@@ -311,10 +267,7 @@ export default function StressPage() {
                   const r1Term = r1Usd * abs * (1 + GAP_PREMIUM) * crash.vol;
                   const r2Term =
                     navUsd * PERM_LIQ_HC +
-                    Math.min(
-                      navUsd * 0.005,
-                      LEGS_FIXTURE.r2.dailyCouponUsd * 2
-                    );
+                    Math.min(navUsd * 0.005, LEGS_FIXTURE.r2.dailyCouponUsd * 2);
                   const fc = bd.feeCreditBase * 0.5;
                   const im = Math.max(
                     0,
@@ -329,104 +282,104 @@ export default function StressPage() {
                       debt
                   );
 
-                  // isolated comparator: each class margined alone against
-                  // its pro-rata debt share — no cross-class netting
                   const total = stockUsd + lpUsd + r1Usd + navUsd;
                   const classes = [
-                    {
-                      name: "ST",
-                      c: stockUsd * HC_STOCK - lossStockV,
-                      share: (debt * stockUsd) / total,
-                    },
-                    {
-                      name: "LP",
-                      c: lpUsd * HC_LP - lossLPV,
-                      share: (debt * lpUsd) / total,
-                    },
-                    {
-                      name: "R1",
-                      c: r1Usd * HC_R1 - r1Term,
-                      share: (debt * r1Usd) / total,
-                    },
-                    {
-                      name: "R2",
-                      c: navUsd * HC_R2 - r2Term,
-                      share: (debt * navUsd) / total,
-                    },
+                    { name: "equity", c: stockUsd * HC_STOCK - lossStockV, share: (debt * stockUsd) / total },
+                    { name: "LP", c: lpUsd * HC_LP - lossLPV, share: (debt * lpUsd) / total },
+                    { name: "R1", c: r1Usd * HC_R1 - r1Term, share: (debt * r1Usd) / total },
+                    { name: "R2", c: navUsd * HC_R2 - r2Term, share: (debt * navUsd) / total },
                   ];
                   const failing = classes.filter((c) => c.c < c.share);
-                  const shortfall = failing.reduce(
-                    (a, c) => a + (c.share - c.c),
-                    0
-                  );
+                  const shortfall = failing.reduce((a, c) => a + (c.share - c.c), 0);
 
                   return (
                     <li
                       key={crash.id}
-                      className="rounded-md border border-border bg-secondary/30 px-3 py-2.5"
+                      className="rounded-lg border border-border px-4 py-3"
                     >
                       <div className="flex items-baseline justify-between gap-2">
-                        <p className="text-[12px] font-medium">{crash.label}</p>
-                        <Badge tone="neutral" title={`peak shock ${pct(crash.peakShock * 100, { decimals: 1 })} × vol ${num(crash.vol, 1)}`}>
-                          sh {pct(sh * 100, { decimals: 1 })}
+                        <p className="text-[13px] font-medium">{crash.label}</p>
+                        <Badge tone="neutral">
+                          sh {pct(sh * 100, { decimals: 1 })} · ×{num(crash.vol, 1)} vol
                         </Badge>
                       </div>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        {crash.window} · inputs: peak shock{" "}
-                        {pct(crash.peakShock * 100, { decimals: 1 })} marked, vol
-                        ×{num(crash.vol, 1)} (fixture replay path)
-                      </p>
-                      <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[11px] tabular-nums">
-                        <dt className="text-muted-foreground">cross IM</dt>
-                        <dd className="text-right">{fiat(im, "detailed")}</dd>
+                      <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                        <dt className="text-muted-foreground">cross-margin IM</dt>
+                        <dd className="text-right font-mono tabular-nums">
+                          {fiat(im, "detailed")}
+                        </dd>
                         <dt className="text-muted-foreground">health after</dt>
-                        <dd className="text-right">{healthAfter}</dd>
+                        <dd className="text-right font-mono tabular-nums">{healthAfter}</dd>
                         <dt className="text-muted-foreground">isolated fails</dt>
-                        <dd className="text-right">
+                        <dd className="text-right font-mono tabular-nums">
                           {failing.length > 0
                             ? failing.map((c) => c.name).join(", ")
                             : "none"}
                         </dd>
-                        <dt className="text-muted-foreground">isolated shortfall</dt>
-                        <dd className="text-right">
-                          {failing.length > 0 ? fiat(shortfall, "detailed") : "--"}
-                        </dd>
+                        {failing.length > 0 ? (
+                          <>
+                            <dt className="text-muted-foreground">
+                              isolated shortfall
+                            </dt>
+                            <dd className="text-right font-mono tabular-nums text-destructive">
+                              {fiat(shortfall, "detailed")}
+                            </dd>
+                          </>
+                        ) : null}
                       </dl>
-                      <p className="mt-1.5 text-[11px] text-muted-foreground">
+                      <p className="mt-2 text-xs leading-5 text-muted-foreground">
                         {failing.length > 0
-                          ? `isolated: ${failing
-                              .map((c) => c.name)
-                              .join(" + ")} leg(s) liquidated against pro-rata debt; cross-margined: no unwind (health ${healthAfter}) — zero bad debt path`
-                          : `isolated: all classes clear their pro-rata debt; cross-margined: no unwind (health ${healthAfter})`}
+                          ? `Isolated: the ${failing.map((c) => c.name).join(" + ")} class is liquidated against its pro-rata debt. Cross-margined: no unwind at health ${healthAfter} — the zero-bad-debt path.`
+                          : `Both structures clear this one; inputs: peak shock ${pct(crash.peakShock * 100, { decimals: 1 })}, vol ×${num(crash.vol, 1)} (fixture replay path).`}
                       </p>
                     </li>
                   );
                 })}
               </ul>
             )}
-          </Panel>
+          </Card>
 
-          <Panel title="Grid definitions" caption="constants from §4.2/§6.1 — quoted, not tuned">
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[11px] tabular-nums">
-              <dt className="text-muted-foreground">haircuts</dt>
-              <dd className="text-right">
-                stock {num(HC_STOCK, 2)} · LP {num(HC_LP, 2)} · R1{" "}
-                {num(HC_R1, 2)} · R2 {num(HC_R2, 2)}
-              </dd>
-              <dt className="text-muted-foreground">grid shocks</dt>
-              <dd className="text-right">−20 / −10 / −5 / −2 / +2 / +5 / +10 / +20 %</dd>
-              <dt className="text-muted-foreground">vol states</dt>
-              <dd className="text-right">×1.0 · ×1.5</dd>
-              <dt className="text-muted-foreground">LP terms</dt>
-              <dd className="text-right">β 0.8 · convexity 0.05</dd>
-              <dt className="text-muted-foreground">R1 gap premium</dt>
-              <dd className="text-right">{num(GAP_PREMIUM, 1)} (weekend/overnight)</dd>
-              <dt className="text-muted-foreground">R2 perm-liq haircut</dt>
-              <dd className="text-right">{pct(PERM_LIQ_HC * 100, { decimals: 1 })} of NAV</dd>
-            </dl>
-          </Panel>
+          <Card
+            title="Current flags"
+            caption="what the engine sees right now"
+          >
+            <div className="flex flex-col gap-2.5 text-[13px]">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">
+                  R1 transfer-restricted
+                </span>
+                <Badge tone={r1TransferRestricted ? "warning" : "positive"}>
+                  {r1TransferRestricted ? "true — locked" : "false"}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">R2 redemption gate</span>
+                <Badge tone={gateOpen ? "positive" : "warning"}>
+                  {gateOpen ? "open" : "shut"}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">unwindable now</span>
+                <span className="font-mono text-[13px] tabular-nums">
+                  {fiat(bd.unwindableNow, "detailed")}
+                </span>
+              </div>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button tone="destructive" size="sm" onClick={() => demoActions.gateShut()} disabled={!gateOpen}>
+                Shut the gate
+              </Button>
+              <Button size="sm" onClick={() => demoActions.gateOpen()} disabled={gateOpen}>
+                Reopen the gate
+              </Button>
+            </div>
+          </Card>
         </div>
       </div>
     </div>
   );
+}
+
+function volState(j: number): number {
+  return VOL_STATES[j];
 }
