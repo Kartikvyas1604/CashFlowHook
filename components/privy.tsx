@@ -67,7 +67,7 @@ function PrivySessionBridge({ children }: { children: ReactNode }) {
     } else {
       sessionActions.privySessionInactive();
     }
-  }, [privy.ready, privy.authenticated, email, session.pendingSignOut]);
+  }, [privy, privy.ready, privy.authenticated, email, session.pendingSignOut, session.provider]);
 
   return <>{children}</>;
 }

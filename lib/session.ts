@@ -107,7 +107,13 @@ export const sessionActions = {
       return { emailError, passwordError };
     }
     const clean = email.trim().toLowerCase();
-    commit({ status: "validating", email: clean, error: null });
+    commit({
+      status: "validating",
+      email: clean,
+      error: null,
+      provider: state.provider ?? "demo",
+      pendingSignOut: false,
+    });
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
       commit({
